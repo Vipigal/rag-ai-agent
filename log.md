@@ -2,8 +2,9 @@
 
 ## 2026-08-31
 
-- **Creation**: Recorded [Decision 0003](/docs/decisions/0003-vendor-and-adapt-agent-skills.md) — the 14 agent skills are vendored into `.agents/skills/` (fixing broken symlinks) and adapted to this repo: ADR → OKF decision records, `CONTEXT.md` → `Glossary` concepts, TypeScript → Python, tracker dependencies removed. The `Glossary` type joined the [Authoring Guide](/docs/authoring-guide.md).
-- **Update**: Skills relocated to `.claude/skills/` as standalone copies (the symlink-through-`.agents/` layout was dropped); [Decision 0003](/docs/decisions/0003-vendor-and-adapt-agent-skills.md) amended. The [Authoring Guide](/docs/authoring-guide.md)'s approval gate is conversational: agents propose new concepts and wait for the owner's OK.
+- **Creation**: Recorded [Decision 0003](/docs/decisions/0003-toolchain-plain-pip-docker-first.md) — classic pip + venv with pinned requirements (no uv/poetry), Python 3.14 via pyenv on the host, docker-first delivery with `docker compose up` as the evaluators' single command, hot reload via compose bind mount. First code landed with it: the `src/api` module scaffold (FastAPI `GET /health`, built test-first).
+
+- **Update**: The `Glossary` type joined the [Authoring Guide](/docs/authoring-guide.md), and its approval gate is conversational: agents propose new concepts and wait for the owner's OK.
 - **Update**: Moved the research concepts into a dedicated [research/](/research/) area (backlink source for future decisions), keeping `docs/` for cross-cutting policy and process concepts. The [Authoring Guide](/docs/authoring-guide.md) now requires owner approval before any new concept is created.
 - **Creation**: [Case Files Corpus Findings](/research/case-files-corpus-findings.md) — empirical survey of the `case_files/` PDFs; documents the CESTARI broken-CMap text layer (silent `�` output without Tesseract) and measured pymupdf4llm 1.28.2 behavior (tables, inline image refs, `toc_items`, `page_chunks` schema drift).
 - **Creation**: [Retrieval Strategy Evidence](/research/retrieval-strategy-evidence.md) — cited external evidence for hybrid search, small-to-big/parent-document retrieval, chunk sizing, and PDF-parser benchmarks, gathered to ground future ingestion/retrieval decision records.

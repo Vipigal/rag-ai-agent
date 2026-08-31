@@ -99,9 +99,7 @@ the repo must carry OKF frontmatter with a `type`**, except:
   the repo-root `README.md` and tool-mandated markdown such as
   `CLAUDE.md`, and
 - dot-directories (`.claude/`, `.github/`), which sit outside the bundle
-  tree — their markdown (e.g. skill files) follows each tool's own format
-  (see
-  [Decision 0003](/docs/decisions/0003-vendor-and-adapt-agent-skills.md)).
+  tree — their markdown (e.g. skill files) follows each tool's own format.
 
 Knowledge must never live only in an exempt file or outside the bundle.
 
