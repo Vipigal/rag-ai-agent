@@ -1,0 +1,79 @@
+- id: neg-001
+  question: "quanto custa o motor W22 de 10 cv?"
+  persona: operator
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "Os documentos disponíveis não trazem preços — o guia WEG é técnico (especificação), não comercial. Para preço, é preciso consultar a WEG ou um representante."
+  requires_image: false
+  notes: "Commercial info absent from a technical corpus; refusal should still be helpful (point to the vendor)."
+
+- id: neg-002
+  question: "qual o torque máximo de saída do redutor Cestari Magmax MX-530?"
+  persona: technical
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "O manual WEG-CESTARI disponível é o guia de consulta rápida, genérico: ele cita a linha Magmax, mas não traz dados dimensionais nem torque de modelos específicos. O torque de saída (M2) de uma unidade específica consta na placa de identificação do próprio redutor ou no manual do produto no site www.wegcestari.com."
+  requires_image: false
+  notes: "Near-miss trap: the corpus mentions the Magmax line and defines M2 — a hallucinating system may invent a number. Ideal refusal points to the nameplate."
+
+- id: neg-003
+  question: "o inversor CFW11 aceita alimentação em 380 V?"
+  persona: operator
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "Não dá para responder com os documentos disponíveis: o CFW-11 é citado no guia WEG apenas como a linha de inversores que aciona os motores W22 Magnet, sem nenhuma especificação elétrica do inversor. Seria preciso o manual do CFW-11."
+  requires_image: false
+  notes: "Entity exists in the corpus (one mention), but the asked attribute doesn't — the classic partial-knowledge hallucination bait."
+
+- id: neg-004
+  question: "How much oil does a 580TY frame submersible pump motor take?"
+  persona: technical
+  language: en
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "The oil amount table in the submersible pump motor manual covers frames 180TY through 440TY only — there is no 580TY entry. For a frame outside the table, contact the manufacturer (Baldor District Office)."
+  requires_image: false
+  notes: "Out-of-range table lookup: the table exists (mn414-001 uses it) but the requested row doesn't. Tests refusal over interpolation."
+
+- id: neg-005
+  question: "de quanto em quanto tempo troco os rolamentos do motor da bomba submersa?"
+  persona: operator
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "O manual do motor submersível não define intervalo de troca de rolamentos. Ele determina que a manutenção seja feita apenas por oficina qualificada, por causa da construção estanque e dos selos cerâmicos frágeis que exigem ferramentas especiais. O que existe de programado é a lubrificação (óleo Shell Rotella 10 SAE 10W)."
+  requires_image: false
+  notes: "Refusal-with-context: the correct behavior is admitting the interval isn't specified while surfacing the adjacent maintenance facts."
+
+- id: neg-006
+  question: "qual a corrente nominal do motor WEG W22 de 50 cv em 380 V?"
+  persona: technical
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "O guia de especificação não traz folhas de dados por modelo — corrente nominal específica de um W22 de 50 cv não consta nos documentos. Esse dado vem da folha de dados/placa do motor ou do catálogo WEG. O guia permite apenas estimativas indiretas (via rendimento e fator de potência), não o valor nominal do modelo."
+  requires_image: false
+  notes: "The corpus teaches the formulas but not the datasheet value; a system that computes an estimate must present it as estimate, not as the nominal rating."
+
+- id: neg-007
+  question: "a garantia do motor da bomba submersa é de quantos meses?"
+  persona: operator
+  language: pt
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "Os manuais do motor submersível (MN414 e LB5001) não trazem prazo de garantia. Atenção: o prazo de 12 meses que aparece no corpus é da garantia WEG-CESTARI para REDUTORES — não vale para o motor da bomba. Para a garantia do motor Baldor/ABB, consulte o Baldor District Office ou os termos de compra."
+  requires_image: false
+  notes: "The nastiest trap in the set: a 12-month warranty EXISTS in the corpus but belongs to a different product (CESTARI gearboxes). Cross-document confusion probe."
+
+- id: neg-008
+  question: "Which grease should I use when regreasing the bearings of the CESTARI gearbox?"
+  persona: technical
+  language: en
+  category: unanswerable
+  gold_excerpts: []
+  reference_answer: "The CESTARI manual doesn't specify a bearing regreasing grease — those gear units are oil-bath lubricated (gears and bearings run immersed in oil), so there is no bearing-grease schedule. The greases it does mention serve other purposes: NLGI#2EP Texaco Multifak EP2 protects lip seals externally during storage, and Molykote G-Rapid Plus is an anti-oxidant paste for hollow-shaft mounting. Baldor motor greasing (Polyrex EM) is a different product entirely."
+  requires_image: false
+  notes: "Three greases exist in the corpus, none for this purpose — measures whether the system grabs a plausible-but-wrong identifier."

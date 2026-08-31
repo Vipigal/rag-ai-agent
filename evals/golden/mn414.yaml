@@ -1,0 +1,253 @@
+- id: mn414-001
+  question: "How much oil does a 250TY frame submersible pump motor take?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 11
+      text: |-
+        Table 2-1 Oil Amount by Frame Size
+        Frame Size Oil Spec Quantity
+        Min. Quarts Max. Quarts
+        250TY 4824-18-AF 3.0 3.5
+  reference_answer: "A 250TY frame takes between 3.0 and 3.5 quarts of oil (oil spec 4824-18-AF)."
+  expected_facts: ["3.0", "3.5"]
+  requires_image: false
+  notes: "Table lookup with min/max pair — both bounds must survive ingestion, not just one cell."
+
+- id: mn414-002
+  question: "qual óleo que vai no motor da bomba submersa?"
+  persona: operator
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 11
+      text: "Recommended lubricant is Shell Rotella 10 SAE 10W."
+  reference_answer: "O lubrificante recomendado é o Shell Rotella 10 SAE 10W. A quantidade depende da carcaça do motor, e a manutenção deve ser feita por oficina qualificada, porque a construção do motor é vedada à água e os selos cerâmicos danificam fácil."
+  expected_facts: ["Shell Rotella"]
+  requires_image: false
+  notes: "Cross-lingual spec lookup; exact product identifier must survive retrieval and generation."
+
+- id: mn414-003
+  question: "What is the maximum submergence depth for a tandem seal submersible motor, and does it change for slurry seal designs?"
+  persona: technical
+  language: en
+  category: spec_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 8
+      text: "Maximum submergence of motor is not to exceed 160 ft (49m) in depth or 100 PSI (690 kpas) at the external motor seal for Tandem Seal designs. For slurry seal designs the maximum external motor seal pressure is 15 PSI (103 kpas)."
+  reference_answer: "For Tandem Seal designs, maximum submergence is 160 ft (49 m) in depth or 100 PSI (690 kPa) at the external motor seal. For slurry seal designs the limit is lower: maximum external motor seal pressure of 15 PSI (103 kPa)."
+  expected_facts: ["160", "100 PSI", "15 PSI"]
+  requires_image: false
+  notes: "Two-part spec with a contrast (tandem vs slurry); a lazy answer that gives only 160 ft misses half the facts."
+
+- id: mn414-004
+  question: "deu vontade de testar a bomba fora do poço, rapidinho, sem água. pode?"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 11
+      text: "Note: Never operate these type 21 seals in a dry-run condition."
+  reference_answer: "Não pode. O manual é explícito: nunca opere os selos tipo 21 a seco (dry-run), nem rapidinho. Rodar sem líquido danifica os selos mecânicos da bomba."
+  requires_image: false
+  notes: "Cross-lingual safety; the prohibition is a one-line note buried in the Operation section — tests recall of short but critical chunks."
+
+- id: mn414-005
+  question: "What continuous and inrush current can the thermostat contacts handle on a 440-480 V AC circuit?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 9
+      text: |-
+        Volts Continuous Inrush
+        AC Amps Amps
+        440-480 0.75 7.5
+  reference_answer: "On a 440-480 V AC circuit the thermostat contacts are rated 0.75 A continuous and 7.5 A inrush."
+  expected_facts: ["0.75", "7.5"]
+  requires_image: false
+  notes: "Small ratings table embedded next to Figure 2-2 — checks tables inside figure areas are still extracted."
+
+- id: mn414-006
+  question: "vou içar o conjunto motor e bomba com cabo de aço, sem barra. tem ângulo máximo pro cabo?"
+  persona: operator
+  language: pt
+  category: figure
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 7
+      text: "Lift using Lift Eyes only. Lifting by power cords will cause motor damage. Use spreader bar to evenly distribute lift force. Angle of lift rope (no spreader bar) should not exceed 45° from vertical, excessive lift angle can damage motor."
+  reference_answer: "Tem: sem barra espaçadora (spreader bar), o ângulo do cabo não pode passar de 45° em relação à vertical — ângulo excessivo danifica o motor. Ice somente pelos olhais de içamento, nunca pelos cabos elétricos, e o método preferido é com barra espaçadora."
+  expected_facts: ["45"]
+  requires_image: false
+  notes: "Figure-anchored (caution beside Figure 2-1 Lift Methods): answerable from the text around the figure — gates the text↔figure linkage."
+
+- id: mn414-007
+  question: "The pump is spinning backwards on a three phase motor. What's the fix?"
+  persona: technical
+  language: en
+  category: procedure
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 8
+      text: "For three phase motors only: To reverse direction of a three phase motor, interchange any two motor lead connections at the starter."
+  reference_answer: "Interchange any two of the three motor lead connections at the starter — that reverses rotation on a three phase motor. Turn off and lock out all power and verify zero voltage at the motor leads before touching connections, then restore power and verify correct rotation."
+  requires_image: false
+  notes: "Classic field question; the core fact is one sentence, the safe procedure (lockout, verify) lives in the surrounding installation steps."
+
+- id: mn414-008
+  question: "o motor tem uns sensores de umidade, mas cadê o alarme? é só ligar os fios que ele apita?"
+  persona: operator
+  language: pt
+  category: procedure
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 10
+      text: "A leakage detector control such as Ametek APT Series 8040MD Moisture Detector (or equivalent) must be purchased separately. The leakage detector control system must be connected for the warranty and the U/L listing to be valid."
+    - document: MN414_0224.pdf
+      page: 10
+      text: "IMPORTANT: Failure to properly connect and use this leakage detector system voids motor warranty."
+  reference_answer: "Não — o motor traz só as sondas de umidade. O controle detector de vazamento (por exemplo um Ametek APT Série 8040MD, ou equivalente) é vendido separadamente e precisa ser comprado e ligado. E atenção: se o detector não for conectado e usado corretamente, a garantia do motor perde a validade."
+  expected_facts: ["Ametek"]
+  requires_image: false
+  notes: "Cross-lingual multi-excerpt; the warranty-voiding consequence is the part an operator most needs and most often misses."
+
+- id: mn414-009
+  question: "Which motor lead is the white power cable wire on a polyphase submersible motor?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 9
+      text: |-
+        Motor Power Cable Lead Color
+        Black White Red Orange Green
+        Polyphase T1 T2 T3 - Ground
+  reference_answer: "On a polyphase motor the white wire is lead T2. The full color code is: black = T1, white = T2, red = T3, green = ground."
+  expected_facts: ["T2"]
+  requires_image: false
+  notes: "Color↔lead mapping table; a column-shifted table extraction would answer T1 or T3 — direct probe of table alignment."
+
+- id: mn414-010
+  question: "posso descer a bomba no poço segurando pelo cabo elétrico?"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 6
+      text: "Never raise or lower the motor/pump by the power cords. Use lifting eyes provided in the motor casting (opposite drive end) and attach a cord/cable to lift the weight of the motor and pump. Failure to lift this motor properly may seriously damage the lead connections and water seals and seriously damage the motor."
+  reference_answer: "Nunca. Não se levanta nem se desce o conjunto motor/bomba pelos cabos elétricos — use os olhais de içamento fundidos na carcaça (no lado oposto ao acionamento) com um cabo próprio. Içar errado pode danificar seriamente as conexões elétricas, os selos de vedação e o próprio motor."
+  requires_image: false
+  notes: "Cross-lingual safety; the same caution appears twice in the manual (pages 6 and 7) — either page satisfies citation ground truth via this excerpt."
+
+- id: mn414-011
+  question: "How much voltage and frequency deviation from nameplate can these pump motors tolerate?"
+  persona: technical
+  language: en
+  category: spec_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 8
+      text: "Motor will operate properly with frequency not more than ±5% and voltage not more than ±10% above or below nameplate rating."
+  reference_answer: "Frequency may deviate at most ±5% and voltage at most ±10% above or below the nameplate rating. Performance within this range will not necessarily match the performance at exact rated voltage and frequency."
+  expected_facts: ["5%", "10%"]
+  requires_image: false
+  notes: "Tolerance pair — answers that swap the two percentages are wrong; expected_facts alone can't catch a swap, the judge diagnostic can."
+
+- id: mn414-012
+  question: "a bomba parou sozinha do nada. o que costuma derrubar ela?"
+  persona: operator
+  language: pt
+  category: procedure
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 11
+      text: "Motor operation may stop for one of the following trip conditions: 1. If moisture infiltrates the motor, the moisture detector circuit will activate. 2. If the motor overheats, the Thermal Protection circuit will activate. 3. Other condition detected by motor starter (over current, over voltage, etc. if equipped)"
+  reference_answer: "Três causas comuns de desarme: entrou umidade no motor e o circuito do detector de umidade atuou; o motor superaqueceu e a proteção térmica atuou; ou o starter detectou alguma outra condição, como sobrecorrente ou sobretensão (se equipado)."
+  requires_image: false
+  notes: "Cross-lingual troubleshooting; open operator phrasing ('parou sozinha') vs the manual's 'trip conditions' vocabulary."
+
+- id: mn414-013
+  question: "How do I wire the thermostat leads on a submersible pump motor, and can I rely on them for locked rotor protection?"
+  persona: technical
+  language: en
+  category: conceptual
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 9
+      text: "Thermostat leads marked P1 & P2 must be connected in series with the stop button of the 3−wire pilot circuit of the magnetic motor controller, so that the thermostat will open the circuit before dangerous temperatures are reached"
+    - document: MN414_0224.pdf
+      page: 9
+      text: "Thermostats do not provide winding over temperature protection (locked rotor). It is suggested that over current protection be used in the motor starter to ensure locked rotor protection."
+    - document: MN414_0224.pdf
+      page: 5
+      text: "Thermostat contacts automatically reset when the motor has slightly cooled down. To prevent injury or damage, the control circuit should be designed so that automatic starting of the motor is not possible when the thermostat resets."
+  reference_answer: "Connect thermostat leads P1 and P2 in series with the stop button of the 3-wire pilot circuit of the magnetic motor controller, so the thermostat opens the circuit before dangerous temperatures are reached. Do not rely on them for locked rotor protection — thermostats do not provide it; use over current protection in the motor starter. Also note the contacts reset automatically as the motor cools, so the control circuit must be designed so the motor cannot restart by itself on reset."
+  expected_facts: ["P1", "P2"]
+  requires_image: false
+  notes: "Three-excerpt case spanning pages 5 and 9 — stresses recall@5 with multiple relevant chunks and cross-page synthesis."
+
+- id: mn414-014
+  question: "meu motor é dos que têm camisa d'água. posso passar a cinta em volta dela pra levantar?"
+  persona: operator
+  language: pt
+  category: figure
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 7
+      text: "Alternate Method if Water Jacket equipped Do not lift submersible motor by the water jacket. Use lifting straps at front and back end brackets as shown."
+  reference_answer: "Não — nunca ice o motor pela camisa d'água. Nos motores com camisa d'água, passe as cintas de içamento nos suportes das extremidades dianteira e traseira, como o manual mostra."
+  requires_image: false
+  notes: "Figure-anchored (text box inside Figure 2-1): answerable from the figure's own text; the exact strap arrangement is in the drawing."
+
+- id: mn414-015
+  question: "We have a submersible pump motor that sat in the warehouse for eight months. Anything special required before putting it into service?"
+  persona: technical
+  language: en
+  category: spec_lookup
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 6
+      text: "The motor must be stored shaft down in its' original packaging until it is to be into service. The motor should only be lifted using the lifting eyes provided, see Figure 2-1. If the motor must be stored for more than 6 months, the procedures described in MN417 must be followed to prevent motor damage."
+  reference_answer: "Yes — storage beyond 6 months requires following the procedures described in manual MN417 to prevent motor damage. The motor should also have been stored shaft down in its original packaging, and must only be lifted by the lifting eyes."
+  expected_facts: ["MN417"]
+  requires_image: false
+  notes: "Exact document-identifier answer (MN417) — the kind of token pure vector search tends to miss (Decision 0005's hybrid-search motivation)."
+
+- id: mn414-016
+  question: "tem dois fio saindo do motor escrito W1 e W2, servem pra quê?"
+  persona: operator
+  language: pt
+  category: conceptual
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 8
+      text: "Moisture Sensing Probes must be connected. Leads marked W1 and W2. (See Figure 2-3)."
+    - document: MN414_0224.pdf
+      page: 10
+      text: "Dual moisture sensing probes extend into the oil chamber located between the tandem mechanical seals. Should the outer seal fail, water will enter the oil chamber through the labyrinth slinger paths and create a water/oil emulsion in the oil chamber."
+  reference_answer: "W1 e W2 são os fios das sondas de detecção de umidade. As duas sondas ficam na câmara de óleo, entre os selos mecânicos: se o selo externo falhar e entrar água, a mistura água/óleo aumenta a condutividade e o detector de umidade percebe. Esses fios devem ser conectados ao controle detector de vazamento."
+  requires_image: false
+  notes: "Cross-lingual, exact-identifier (W1/W2) + multi-excerpt spanning pages 8 and 10."
+
+- id: mn414-017
+  question: "quantos contatos tem aquele conector redondo no topo do motor onde encaixa o cabo de força?"
+  persona: operator
+  language: pt
+  category: image_content
+  gold_excerpts:
+    - document: MN414_0224.pdf
+      page: 13
+      text: "Figure 3-3 Cable receptacle Insert the cable into the receptacle. Insure that the protrusion on the cable lines up with the receptacle notch. Insert the cable and make sure the cable is fully inserted."
+  reference_answer: "O receptáculo do cabo tem 3 contatos, um para cada cabo de força (T1, T2 e T3) — é o que a foto do receptáculo (Figure 3-3) mostra. O encaixe é guiado pelo ressalto do cabo alinhado com o entalhe do receptáculo."
+  expected_facts: ["3"]
+  requires_image: true
+  notes: "requires_image case: the contact count is only visible in the Figure 3-3 photo (corroborated by the '3 marked power leads' note on page 8). Diagnostic track."

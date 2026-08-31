@@ -1,0 +1,515 @@
+- id: cestari-001
+  question: "na plaquinha do redutor tem escrito M2 com um número do lado. isso é o quê?"
+  persona: operator
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 6
+      text: "P1: Potência do Motor ou do Redutor (kW). rpm: Rotação de saída do redutor. M2: Torque de Saída (Nm). fs: Fator de serviço. i: Redução Total."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 32
+          text: "P1: Potencia del Motor o Reductor (kW). rpm: Rotación de salida del reductor (rpm). M2: Par de salida (Nm). fs: Factor de servicio. i: Reducción total."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 58
+          text: "P1: Motor or Gear unit power (kW). rpm: Gear unit output speed (rpm). M2: Output Torque (Nm). sf: Gearmotor service factor. i: Speed ratio."
+  reference_answer: "M2 é o torque de saída do redutor, em Nm (newton-metro). É um dos dados da placa de identificação, junto com P1 (potência em kW), rpm de saída, fs (fator de serviço) e i (redução total)."
+  expected_facts: ["Nm"]
+  requires_image: false
+  notes: "Nameplate field decoding; the EN section calls the service factor 'sf' while PT/ES call it 'fs' — a cross-language vocabulary trap."
+
+- id: cestari-002
+  question: "o redutor aqui não tem parafuso de içamento. posso pendurar o conjunto todo só pelo olhal do motor?"
+  persona: operator
+  language: pt
+  category: figure
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 7
+      text: "Os redutores/motorredutores deverão ser movimentados utilizando-se do parafuso de suspensão (Fig.2A) e na inexistência deste, a unidade deverá ser suspensa através da carcaça do redutor (Fig.2B), em conjunto com o olhal do motor (Fig.2C) respeitando o ângulo máximo de 60º entre os cabos. Nunca suspenda o equipamento somente através do motor."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 33
+          text: "Los reductores/motorreductores deberán ser movidos haciendo uso del cáncamo de izaje (Fig.2A), ante la inexistencia de éste, la unidad deberá ser suspendida a través de la carcasa del reductor (Fig.2B), en conjunto con el cáncamo del motor (Fig.2C) respetando el ángulo máximo de 60º entre los cables. Jamás izar el equipo solamente a través del motor."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 59
+          text: "The gear units/gearmotors must be moved using the lifting eyebolt (Fig. 2A) and, if eyebolt is not present, the unit must be lifted through the gear unit housing (Fig.2B), together with the eyebolt of the motor (Fig.2C) observing the maximum angle of 60º between the cables. Never lift the equipment only through the motor."
+  reference_answer: "Não — nunca suspenda o equipamento somente pelo motor. Sem o parafuso de suspensão, o conjunto deve ser suspenso pela carcaça do redutor junto com o olhal do motor, respeitando o ângulo máximo de 60° entre os cabos."
+  expected_facts: ["60"]
+  requires_image: false
+  notes: "Figure-anchored (Figuras 2A-2C); the prohibition is underlined in the manual — a hard safety fact."
+
+- id: cestari-003
+  question: "quais os limites de umidade e temperatura pra armazenar redutor parado no almoxarifado?"
+  persona: technical
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 7
+      text: "devem ser armazenados em sua embalagem original em ambiente fechado (não expostos diretamente aos raios solares ou raios UV), seco, protegido contra insetos, livre de poeira, umidade do ar inferior a 60%, isentos de gases, fungos, agentes corrosivos (ar contaminado, ozônio, gases, solventes, ácidos, alcalina, sais, radioatividade, etc.) e temperatura ambiente entre -5ºC a +40ºC."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 33
+          text: "deben ser almacenados en su embalaje original en ambiente cerrado (no expuestos directamente a los rayos solares o rayos UV), seco, protegido contra insectos, libre de polvo, humedad del aire inferior a 60%, exentos de gases, hongos, agentes corrosivos (aire contaminado, ozono, gases, solventes, ácidos, alcalina, sales, radioactividad, etc.) y a una temperatura ambiente entre -5ºC y +40ºC."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 59
+          text: "must be stored in its original package in a closed (not directly exposed to sunrays or UV rays) and dry environment protected against vermin with relative humidity below 60% and free of dust, gases, fungi and corrosive agents (contaminated air, ozone, gases, solvents, acids, alkaline products, salts, radioactivity, etc.). and ambient temperature between -5ºC to +40ºC."
+  reference_answer: "Umidade do ar inferior a 60% e temperatura ambiente entre -5 °C e +40 °C, em embalagem original, ambiente fechado e seco, sem exposição direta a sol/UV, livre de poeira e agentes corrosivos."
+  expected_facts: ["60%", "40"]
+  requires_image: false
+  notes: "Multi-value environmental spec; answer must carry both humidity and temperature bounds."
+
+- id: cestari-004
+  question: "o redutor vai ficar uns 7 meses parado no estoque antes de instalar. precisa fazer alguma coisa nele nesse meio tempo?"
+  persona: operator
+  language: pt
+  category: procedure
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 8
+      text: "Para períodos de 6 meses até 9 meses sem operação, é recomendado preencher todo interior do redutor com lubrificantes apropriados"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 34
+          text: "Para períodos desde 6 a 9 meses sin operación, es recomendado llenar todo interior del reductor con lubricantes apropiados"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 60
+          text: "For periods from six months to nine months out of operation, it is recommended to fill the gear unit with proper lubricants"
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 8
+      text: "O eixo de entrada do redutor deverá ser girado no mínimo duas voltas completas e este procedimento deverá ser repetido, no mínimo, 1 vez a cada 2 meses."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 34
+          text: "El eje de entrada del reductor deberá ser girado un mínimo de dos vueltas completas y este procedimiento deberá ser repetido, como mínimo, 1 vez cada 2 meses."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 60
+          text: "The high-speed shaft (the gear unit input shaft) must be turned at least two complete revolutions and this procedure shall be repeated at least once every two months."
+  reference_answer: "Precisa. Para 6 a 9 meses parado: encher todo o interior do redutor com lubrificante apropriado até a parte superior (logo abaixo do respiro), para engrenagens e rolamentos ficarem imersos, e girar o eixo de entrada pelo menos duas voltas completas, repetindo no mínimo 1 vez a cada 2 meses. Antes de operar, drenar o óleo até o nível adequado de operação."
+  requires_image: false
+  notes: "Multi-excerpt procedure; the drain-before-operation step (NOTAS on the same page) belongs in the ideal answer even though it isn't a gold slot."
+
+- id: cestari-005
+  question: "vou hibernar um redutor por mais de 9 meses. qual a proporção de VCI no óleo? e se o redutor veio sem óleo de fábrica?"
+  persona: technical
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 9
+      text: "Nos redutores fornecidos com óleo lubrificante, acrescentar agente anticorrosivo VCI (Volatile Corrosion Inhibitor) no lubrificante na medida de 2% da capacidade de lubrificante. Depois gire os eixos várias vezes;"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 35
+          text: "En los reductores suministrados con aceite lubricante, agregar agente anticorrosivo VCI (Volatile Corrosion Inhibitor) en el lubricante, en la medida de 2% de la capacidad del lubricante. Después gire los ejes varias veces;"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 61
+          text: "For gear units supplied with lubricating oil, add VCI anticorrosive agent (Volatile Corrosion Inhibitor) in the lubricant up to the ration of 2% of lubricant capacity. Then turn the shafts several times;"
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 9
+      text: "Nos casos de redutores fornecidos sem óleo, misturar 10% do volume total do lubrificante recomendado nos manuais com 2% também deste volume total de VCI e abastecer o redutor. Referência de VCI aditivo MV OIL 1061"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 35
+          text: "En caso de reductores suministrados sin aceite, mezclar 10% del volumen total del lubricante recomendado en los manuales, con 2% también de este volumen total de VCI y ponerlo en el reductor. Referencia de VCI aditivo MV OIL 1061"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 61
+          text: "In the case of gear units supplied without oil, mix 10% of the total volume of lubricant recommended in the manuals with 2% of this total volume of VCI and put into the gear unit. Reference of VCI additive MV OIL 1061"
+  reference_answer: "Redutor fornecido com óleo: adicionar VCI (Volatile Corrosion Inhibitor) na medida de 2% da capacidade de lubrificante e girar os eixos várias vezes. Redutor fornecido sem óleo: misturar 10% do volume total do lubrificante recomendado com 2% desse volume total de VCI e abastecer. Referência de aditivo: MV OIL 1061."
+  expected_facts: ["2%", "10%"]
+  requires_image: false
+  notes: "Two-branch spec with an exact additive identifier (MV OIL 1061); multi-excerpt on the same page."
+
+- id: cestari-006
+  question: "um redutor ficou guardado 3 anos no galpão. o que tem que substituir antes de colocar pra rodar?"
+  persona: technical
+  language: pt
+  category: conceptual
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 10
+      text: "Caso o tempo de armazenamento ou parada ultrapasse 2 anos ou a temperatura ambiente se desvie do intervalo normal durante o armazenamento, é necessário substituir o lubrificante do redutor antes da entrada em funcionamento."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 36
+          text: "En caso de que el tiempo de almacenamiento o de parada sobrepase 2 años, o la temperatura ambiente se desvíe del intervalo normal durante el almacenamiento, será necesario sustituir el lubricante del reductor, antes de su puesta en marcha."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 62
+          text: "If the storage or downtime exceeds 2 years or the ambient temperature deviates from the normal range during storage, it is necessary to replace the gear unit lubricant before commissioning."
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 10
+      text: "Considerando que os mesmos foram devidamente lubrificados, após 2 (dois) anos, os retentores devem ser substituídos."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 36
+          text: "Considerando que éstos fueron debidamente lubricados, tras 2 (dos) años, los retenes deberán ser reemplazados"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 62
+          text: "Considering that they have been properly lubricated, after 2 (two) years, the lip seals must be replaced."
+  reference_answer: "Depois de mais de 2 anos parado é preciso substituir o lubrificante do redutor antes da entrada em funcionamento e também substituir os retentores. Além disso: remover fitas usadas na armazenagem, remover umidade acumulada e inspecionar avarias; o agente VCI é solúvel no óleo recomendado e não precisa ser retirado."
+  requires_image: false
+  notes: "Threshold reasoning (3 anos > 2 anos) + two replacements; a common miss is answering only the lubricant."
+
+- id: cestari-007
+  question: "o redutor novo veio com uma borrachinha presa na válvula de respiro. é pra deixar ou tirar?"
+  persona: operator
+  language: pt
+  category: figure
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 11
+      text: "Para os motorredutores/redutores fornecidos com válvula de respiro lacrada com borracha para transporte, antes do funcionamento do motorredutor/redutor remova totalmente a borracha de proteção instalada na válvula"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 20
+          text: "Para os motorredutores/redutores fornecidos com válvula de respiro lacrada com borracha para transporte, antes do funcionamento do motorredutor/redutor remova totalmente a borracha de proteção instalada na válvula"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 37
+          text: "Para los motorreductores/reductores suministrados con válvula de respiración (respiradero) lacrada con goma para transporte, antes del arranque del motorreductor/reductor, remueva totalmente la goma de protección instalada en la válvula"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 63
+          text: "For gearmotors/gear units supplied with a breather valve sealed with a rubber part for transportation, before operation, completely remove the protection rubber part installed in the valve"
+  reference_answer: "É pra tirar. A borracha é só um lacre de transporte: antes de o redutor funcionar, remova totalmente a borracha de proteção da válvula de respiro — só depois disso a válvula está pronta para operar. Se ficar, o respiro obstruído pode causar vazamento de óleo."
+  requires_image: false
+  notes: "Figure-anchored (3-step removal drawing). The same sentence repeats verbatim on the PT operation page (20) — listed as an alternate so citation of either page counts."
+
+- id: cestari-008
+  question: "tô limpando o verniz de proteção da ponta do eixo. pode usar uma lixa fininha que sai mais rápido?"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 11
+      text: "As pontas dos eixos estão protegidas com uma fina camada de óleo anticorrosivo, este óleo deve ser removido antes da instalação, utilizando solventes normais (varsol, aguarrás ou outro similar). ATENÇÃO: O solvente não poderá atingir os retentores e jamais use lixa para remoção do verniz."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 37
+          text: "Las puntas de los ejes están protegidas con una camada delgada de aceite anticorrosivo, este aceite deberá ser removido antes de la instalación, utilizando solventes normales (varsol, aguarrás u otro similar). ATENCIÓN: El solvente no podrá alcanzar los retenes. Jamás use lija para la remoción del barniz."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 63
+          text: "The shaft ends are protected with a thin layer of anti-corrosive oil; this oil must be removed before installation with regular solvents (varsol, turpentine or the like). ATTENTION: The solvent cannot reach the lip seals, and never use sandpaper to remove the varnish."
+  reference_answer: "Não pode — jamais use lixa para remover o verniz. Use solventes normais (varsol, aguarrás ou similar), tomando cuidado para o solvente não atingir os retentores."
+  requires_image: false
+  notes: "Explicit prohibition ('jamais use lixa') phrased as a tempting shortcut."
+
+- id: cestari-009
+  question: "vou montar uma corrente de rolos no eixo de saída do redutor. como calculo o diâmetro mínimo dela e qual fator kr entra na conta?"
+  persona: technical
+  language: pt
+  category: conceptual
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 12
+      text: "verificando também o diâmetro mínimo admissível (Dmin, mm), do elemento de transmissão através da equação que se segue: Dmin = 2000 Mc Fr kr Onde: Mc = Momento a ser transmitido (Nm). Fr = Carga radial admissível no eixo de saída do redutor (N) Kr = Fator adicional."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 38
+          text: "verificando también el diámetro mínimo admisible (Dmin, mm), del elemento de transmisión, a través de la ecuación siguiente: Dmin = 2000 Mc Fr kr Donde: Mc = Momento a ser transmitido (Nm). Fr = Carga radial admisible en el eje de salida del reductor (N) Kr = Factor adicional."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 64
+          text: "also checking the minimum diameter allowed (Dmin, mm) of the transmission element through the following equation: Dmin = 2000 Mc Fr kr Where: Mc = Torque to be transmitted (Nm). Fr = Radial load accepted on the gear unit output shaft (N) Kr = Additional factor."
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 13
+      text: "Valores para o fator kr: Correia plana com esticador: 2,5 Correia plana sem esticador: 5 Correia trapezoidal sem esticador: 1,75 Corrente de rolos ou corrente silenciosa: 1,4 Engrenagens: 1,15"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 39
+          text: "Valores para el factor kr: Correa plana con estirador: 2,5 Correa plana sin estirador: 5 Correa trapezoidal sin estirador: 1,75 Cadena de rodillos o cadena silenciosa: 1,4 Engranajes: 1,15"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 65
+          text: "Values for the Kr factor: Flat belt with tightener: 2.5 Flat belt without tightener: 5 Trapezoidal belt without tightener: 1.75 Roller chain or silent chain: 1.4 Gears: 1.15"
+  reference_answer: "Use a equação Dmin = (2000 × Mc / Fr) × kr, onde Mc é o momento a ser transmitido (Nm), Fr é a carga radial admissível no eixo de saída (N) e kr é o fator adicional do elemento de transmissão. Para corrente de rolos (ou corrente silenciosa), kr = 1,4. O resultado Dmin sai em mm, e é preciso observar o paralelismo entre os eixos."
+  expected_facts: ["2000", "1,4"]
+  requires_image: false
+  notes: "Formula case — pymupdf4llm renders in-text formulas as pseudo-tables (corpus findings), so this probes formula ingestion; excerpts flatten the equation and drop dot leaders, relying on token overlap. EN uses decimal point (1.4) where PT/ES use comma (1,4)."
+
+- id: cestari-010
+  question: "a polia tá dura pra entrar no eixo do redutor. umas marteladas de leve resolvem?"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 13
+      text: "O uso de martelo na montagem desses elementos pode danificar os rolamentos e os dentes das engrenagens do redutor."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 14
+          text: "É inadmissível a montagem por meio de golpes, pois este método danifica rolamentos e dentes das engrenagens."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 39
+          text: "El uso de martillo en el montaje de tales elementos puede dañar los rodamientos y los dientes de los engranajes del reductor."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 61
+          text: "Using a hammer in the assembly of those elements may damage the rolling bearings and teeth of the gears of the gear unit."
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 13
+      text: "É conveniente aquecer a peça a montar até cerca de 100ºC; podendo ser utilizado o furo de centro rosqueado na ponta do eixo do redutor no auxílio da montagem"
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 39
+          text: "Es conveniente calentar la pieza que se va a montar hasta cerca de 100ºC; utilizando caso necesario el agujero de centro roscado en la punta del eje del reductor en el auxilio del montaje"
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 65
+          text: "It is convenient to heat the part to be mounted up to about 100ºC; the threaded center hole on the gear unit shaft end may be used to help mount the transmission element"
+  reference_answer: "Não — martelada é inadmissível: danifica os rolamentos e os dentes das engrenagens do redutor. O jeito certo: a polia deve ter furo com tolerância H7 e montagem com leve interferência; aqueça a peça até cerca de 100 °C e use o furo de centro rosqueado na ponta do eixo para auxiliar a montagem, travando depois contra deslocamento axial."
+  expected_facts: ["100"]
+  requires_image: false
+  notes: "Multi-excerpt safety + procedure; the hammer prohibition appears on two consecutive PT pages (13 and 14 — page 14 listed as alternate)."
+
+- id: cestari-011
+  question: "qual graxa antioxidante é a recomendada pra montar redutor de eixo vazado?"
+  persona: technical
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 14
+      text: "Para evitar oxidações de contato e dificuldades na montagem, é recomendado aplicar e espalhar graxas antioxidantes (como a Dow Corning Molykote G-Rapid Plus ou similares) sobre o eixo, no alojamento e na chaveta."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 40
+          text: "Para evitar oxidaciones de contacto y dificultades en el montaje es recomendado aplicar y esparcir grasas antioxidantes (como Dow Corning Molykote G-Rapid Plus o similares) sobre el eje, en el alojamiento y en la chaveta."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 66
+          text: "In order to prevent contact oxidations and difficulties the mounting, it is recommended to spread antioxidant greases (such as Dow Corning Molykote G-Rapid Plus or the like) on the shaft, on the housing and on the key."
+  reference_answer: "Dow Corning Molykote G-Rapid Plus (ou similar), aplicada e espalhada sobre o eixo, no alojamento e na chaveta — evita oxidação de contato e facilita a montagem. E nunca monte redutor de eixo vazado por golpes."
+  expected_facts: ["Molykote G-Rapid Plus"]
+  requires_image: false
+  notes: "Exact product identifier — hybrid-search motivation case (Decision 0005)."
+
+- id: cestari-012
+  question: "qual a distância mínima entre a entrada de ar do motor do motorredutor e a parede?"
+  persona: technical
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 15
+      text: "O ventilador e aletas do motor devem ser mantidos limpos e livres para permitir uma perfeita refrigeração; o afastamento entre a entrada de ar e a parede deve ser de no mínimo 30 mm."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 41
+          text: "El ventilador y las aletas del motor deben ser mantenidos limpios y libres, para permitir una perfecta refrigeración; el alejamiento entre la entrada de aire y la pared debe ser de un mínimo de 30 mm."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 67
+          text: "The motor fins and fan must be kept clean and cleared so as to enable proper cooling; the clearance between the air inlet and the wall must be at least 30 mm."
+  reference_answer: "No mínimo 30 mm entre a entrada de ar e a parede, com ventilador e aletas sempre limpos e desobstruídos para a refrigeração funcionar."
+  expected_facts: ["30"]
+  requires_image: false
+  notes: "Single precise clearance value buried mid-paragraph."
+
+- id: cestari-013
+  question: "a câmara fria trabalha a -3°C e o redutor é lubrificado por imersão. óleo mineral ISO VG 220 serve pra dar a partida ou preciso de sintético?"
+  persona: technical
+  language: pt
+  category: table_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 17
+      text: |-
+        ÓLEO TEMPERATURA MÍNIMA
+        Tipo Viscosidade Lubrificação por Imersão Lubrificação Forçada
+        Mineral CLP ISO VG 220 +2°C +8°C
+        Sintético CLP HC (PAO) ISO VG 220 -5°C +2°C
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 43
+          text: |-
+            ACEITE TEMPERATURA MÍNIMA
+            Tipo Viscosidad Lubricación por Inmersión Lubricación Forzada
+            Mineral CLP ISO VG 220 +2°C +8°C
+            Sintético CLP HC (PAO) ISO VG 220 -5°C +2°C
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 69
+          text: |-
+            OIL MINIMUM TEMPERATURE
+            Type Viscosity Immersion Lubrication Forced Lubrication
+            Mineral CLP ISO VG 220 +2°C +8°C
+            Synthetic CLP HC (PAO) ISO VG 220 -5°C +2°C
+  reference_answer: "Mineral ISO VG 220 não serve: a temperatura ambiente mínima dele para partida com lubrificação por imersão é +2 °C. A -3 °C use óleo sintético CLP HC (PAO) ISO VG 220, cuja mínima por imersão é -5 °C. Para outras temperaturas, consultar a WEG-CESTARI."
+  expected_facts: ["-5"]
+  requires_image: false
+  notes: "Requires comparing the ambient (-3°C) against two table cells — a wrong column (forced vs immersion) flips the verdict."
+
+- id: cestari-014
+  question: "redutor rodando com óleo mineral a 90°C de temperatura de operação: de quanto em quanto tempo troca o óleo? e se eu migrar pro sintético PG?"
+  persona: technical
+  language: pt
+  category: table_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 18
+      text: |-
+        Temperatura de Operação Óleo Mineral CLP Óleo Sintético CLP HC Hidrocarbons Óleo Sintético CLP PG Polyglycol
+        90 °C 2.500 horas 7.500 horas 13.000 horas
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 44
+          text: |-
+            Temperatura de Operación Aceite Mineral CLP Aceite Sintético CLP HC Hidrocarbons Aceite Sintético CLP PG Polyglycol
+            90 °C 2.500 horas 7.500 horas 13.000 horas
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 70
+          text: |-
+            Operating Temperature Mineral Oil CLP Synthetic Oil CLP HC Hydrocarbons Synthetic Oil CLP PG Polyglycol
+            90 °C 2,500 hours 7,500 hours 13,000 hours
+  reference_answer: "A 90 °C de temperatura de operação: óleo mineral CLP troca a cada 2.500 horas; óleo sintético CLP PG (polyglycol) estende para 13.000 horas. (O sintético CLP HC ficaria em 7.500 horas.) Na troca, use o mesmo óleo indicado na plaqueta e não misture óleos de tipos ou fabricantes diferentes."
+  expected_facts: ["2.500", "13.000"]
+  requires_image: false
+  notes: "Row × two-column lookup; pt digit grouping (2.500) vs EN (2,500) — normalization must treat both as 2500."
+
+- id: cestari-015
+  question: "o redutor que tem bomba de óleo acoplada pode girar pros dois lados?"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 18
+      text: "A Bomba de Engrenagens atua somente em um único sentido de giro (unidirecional). Não é permitido girar em sentido contrário, pois poderá ocasionar perda de eficiência, desgaste excessivo dos componentes internos, superaquecimento devido à falta de lubrificação, além de danificar o sistema de vedação interno e externo da bomba."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 44
+          text: "La Bomba de Engranajes actúa solamente en un único sentido de giro (unidireccional). No es permitido girar en sentido contrario, ya que podrá ocasionar pérdida de eficiencia, desgaste excesivo de los componentes internos, supercalentamiento debido a la falta de lubricación, además de dañar el sistema de sellado interno y externo de la bomba."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 70
+          text: "The Gear Pump operates only in one direction of rotation (unidirectional). It is not allowed to turn in the opposite direction, as it may cause loss of efficiency, excessive wear of the internal components, overheating due to lack of lubrication, and damage to the internal and external sealing system of the pump."
+  reference_answer: "Não — quando o redutor tem bomba de engrenagens, ela é unidirecional: girar no sentido contrário é proibido, porque causa perda de eficiência, desgaste dos componentes internos, superaquecimento por falta de lubrificação e dano à vedação da bomba. O sentido certo é indicado por uma seta fixada próximo ao eixo."
+  requires_image: false
+  notes: "Warning-block content (ATENÇÃO box); tests that warning boxes survive ingestion."
+
+- id: cestari-016
+  question: "em que pressão o pressostato do sistema de lubrificação forçada desarma? e qual a faixa de pressão admissível do sistema?"
+  persona: technical
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 18
+      text: "O mesmo atua quando a pressão cai abaixo de 0,8bar (pressão de ajuste para desarme – regulado de fábrica). A pressão admissível no sistema é mínima 0,8bar e máxima 8bar."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 44
+          text: "Éste actúa cuando la presión cae por debajo de 0,8bar (presión de ajuste para desarme – calibrado desde fábrica). La presión admisible en el sistema es una mínima de 0,8bar y una máxima de 8bar."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 70
+          text: "It trips when the pressure drops below 0.8 bar (tripping pressure - set at the factory). The allowable pressure in the system is minimum 0.8 bar and maximum 8bar."
+  reference_answer: "O pressostato desarma quando a pressão cai abaixo de 0,8 bar (ajuste de fábrica). A pressão admissível no sistema vai de 0,8 bar (mínima) a 8 bar (máxima). No start-up é normal a pressão vir mais alta por entupimento do filtro e cair para a faixa de trabalho após algumas horas."
+  expected_facts: ["0,8", "8"]
+  requires_image: false
+  notes: "Decimal comma values (0,8bar) with no space before the unit — normalization stress test."
+
+- id: cestari-017
+  question: "de quanto em quanto tempo tem que conferir o nível de óleo e os parafusos de fixação do redutor?"
+  persona: operator
+  language: pt
+  category: table_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 21
+      text: |-
+        Roteiro de Manutenção
+        Itens a verificar Procedimentos Periodicidade
+        Nível de óleo Verifique o nível de óleo e, se necessário complete-o. Semanal
+        Parafusos de fixação do motorredutor Verificar se por vibração não houve afrouxamento dos parafusos de fixação do motorredutor. Mensal
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 47
+          text: |-
+            Itinerário de Mantenimiento
+            Ítems a verificar Procedimientos Periodicidad
+            Nivel de Aceite Verifique el nivel de aceite y, si fuera necesario, complételo Semanal
+            Tornillos de fijación del motorreductor Verificar si hubo aflojamiento de los tornillos de fijación del motorreductor, debido a vibración. Mensual
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 73
+          text: |-
+            Maintenance Guide
+            Item to verify Procedures Frequency
+            Oil level Check the oil level and complete it if necessary Weekly
+            Gearmotor mounting screws Check if the vibration did not loosen the gearmotor mounting screws. Monthly
+  reference_answer: "Nível de óleo: toda semana (e completar se precisar). Parafusos de fixação do motorredutor: todo mês, verificando se a vibração não afrouxou. O roteiro completo também pede verificação semanal de ruídos/vibrações e do local de instalação, mensal dos terminais elétricos e semestral dos elementos de transmissão."
+  expected_facts: ["semanal", "mensal"]
+  requires_image: false
+  notes: "Maintenance schedule table; two rows must map to the right frequencies."
+
+- id: cestari-018
+  question: "o redutor tá suando óleo pelo respiro. o que pode ser e o que eu faço?"
+  persona: operator
+  language: pt
+  category: table_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 22
+      text: "Respirador para entrada de ar e saída de gases obstruído. Limpe ou substitua o respirador, use um solvente não inflamável para limpeza."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 48
+          text: "Respirador, para entrada de aire y salida de gases, obstruido. Limpie o sustituya el respirador, use un solvente no inflamable para limpieza."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 74
+          text: "Breather for ais ingress and exit of gases clogged. Clean or replace the breather, use non flammable solvent for cleaning."
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 22
+      text: "Quantidade excessiva de óleo. Cheque o nível e drene para o nível indicado."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 48
+          text: "Cantidad excesiva de aceite. Verifique el nivel y drene hasta el nivel indicado."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 74
+          text: "Excess of oil. Check the oil level and drain it to the correct level."
+  reference_answer: "As causas prováveis de perda de óleo pelo respiro são: respiro obstruído (para entrada de ar e saída de gases) — limpe ou substitua o respirador usando solvente não inflamável; ou quantidade excessiva de óleo — cheque o nível e drene até o nível indicado. Se o vazamento for pelos retentores, eles podem estar gastos e precisam ser substituídos."
+  requires_image: false
+  notes: "Troubleshooting table rendered ROTATED 90° in the PDF — the hardest table-ingestion canary in the corpus. Cell text is a rendered-page transcription; matching depends entirely on token overlap."
+
+- id: cestari-019
+  question: "quanto tempo de garantia tem o redutor novo? começa a contar de quando?"
+  persona: operator
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 24
+      text: "A garantia contra defeitos de fabricação e de materiais oferecida pela WEG-CESTARI é: Produtos: prazo padrão de 12 meses a contar da data de emissão da Nota Fiscal. Serviços: prazo padrão de 6 meses a contar da data de emissão da Nota Fiscal."
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 50
+          text: "La garantía contra defectos de fabricación y de materiales ofrecida por WEG-CESTARI es: Productos: plazo estándar de 12 meses, contando desde la fecha de emisión de la Factura. Servicios: plazo estándar de 6 meses, contando desde la fecha de emisión de la Factura."
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 76
+          text: "The warranty against defects in materials and workmanship offered by WEG-CESTARI is: Products: Standard period of 12 months from the issue date of the Invoice. Services: Standard period of 6 months from the issue date of the Invoice."
+  reference_answer: "Produto: 12 meses de garantia padrão, contados da data de emissão da Nota Fiscal (não da instalação nem da entrada em operação). Serviços têm 6 meses, também da emissão da NF. Prazo diferenciado na proposta técnico-comercial prevalece sobre o padrão."
+  expected_facts: ["12"]
+  requires_image: false
+  notes: "The counting-start (invoice date, independent of installation) is the trap — nota 3 on the same page."
+
+- id: cestari-020
+  question: "Our gearbox runs at an oil temperature of 95 °C on synthetic CLP HC oil. How often should we change the oil, and is mineral oil an option at that temperature?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+      page: 70
+      text: |-
+        Operating Temperature Mineral Oil CLP Synthetic Oil CLP HC Hydrocarbons Synthetic Oil CLP PG Polyglycol
+        95 °C --- --- 6,000 hours 8,500 hours
+      alternates:
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 18
+          text: |-
+            Temperatura de Operação Óleo Mineral CLP Óleo Sintético CLP HC Hidrocarbons Óleo Sintético CLP PG Polyglycol
+            95 °C --- --- 6.000 horas 8.500 horas
+        - document: WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf
+          page: 44
+          text: |-
+            Temperatura de Operación Aceite Mineral CLP Aceite Sintético CLP HC Hidrocarbons Aceite Sintético CLP PG Polyglycol
+            95 °C --- --- 6.000 horas 8.500 horas
+  reference_answer: "At 95 °C operating temperature, synthetic CLP HC oil should be changed every 6,000 hours. Mineral CLP oil is not an option at that temperature — the oil change table lists no interval for mineral oil above 90 °C."
+  expected_facts: ["6,000"]
+  requires_image: false
+  notes: "The '--- ---' empty cell is the answer for the mineral half — tests that the ingestion preserves empty table cells instead of shifting columns."

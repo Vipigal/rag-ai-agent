@@ -24,8 +24,14 @@ okf_version: "0.2"
 
 Module knowledge is co-located with module code: each module directory
 carries its own concepts and, once it holds two or more, an `index.md`
-(see the [Authoring Guide](docs/authoring-guide.md)). No modules exist
-yet; entries appear here as `src/` grows.
+(see the [Authoring Guide](docs/authoring-guide.md)). Entries appear here
+as the tree grows.
+
+- [Golden Dataset](evals/golden/golden-dataset.md) - Co-located overview of the 93-case golden dataset — what each YAML file covers, page-numbering and transcription semantics per source PDF, each file's canary role, and the semantics of negative cases.
+
+# Specs
+
+- [Specs](specs/) - Approved designs for subsystems before they are built; distilled into decision records as choices settle.
 
 # Research
 

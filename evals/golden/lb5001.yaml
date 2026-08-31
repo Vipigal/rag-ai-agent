@@ -1,0 +1,130 @@
+- id: lb5001-001
+  question: "How often should I regrease a NEMA 250 frame motor rated 1800 RPM?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 2
+      text: |-
+        Relubrication Intervals
+        NEMA (IEC) Frame Size Rated Speed (RPM)
+        3600 1800 1200 900
+        Over 210 to 280 incl. (180) 3600Hrs. 9500Hrs. 15000Hrs. 18000Hrs.
+  reference_answer: "A NEMA 250 frame falls in the 'Over 210 to 280 incl.' row of the relubrication intervals table. At 1800 RPM the recommended relubrication interval is 9500 hours."
+  expected_facts: ["9500"]
+  requires_image: false
+  notes: "Table row lookup requiring the reader to map frame 250 into the 'Over 210 to 280' range and cross it with the 1800 RPM column."
+
+- id: lb5001-002
+  question: "quantos gramas de graxa eu adiciono num motor de carcaça NEMA 320?"
+  persona: technical
+  language: pt
+  category: table_lookup
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 2
+      text: |-
+        Amount of Grease to Add
+        Frame Size NEMA (IEC)
+        Weight of grease
+        to add
+        ounce (gram)
+        Over 280 to 360 incl. (225) 0.81 (23.1) 1.5 5.2
+  reference_answer: "A carcaça NEMA 320 cai na faixa 'Over 280 to 360 incl.' da tabela Amount of Grease to Add: adicione 23,1 g de graxa (0,81 oz), o que equivale a 1,5 pol³ ou 5,2 colheres de chá."
+  expected_facts: ["23.1"]
+  requires_image: false
+  notes: "Cross-lingual (pt question, EN doc) + table lookup with range mapping (320 → Over 280 to 360). Harness normalization must equate '23,1' and '23.1'."
+
+- id: lb5001-003
+  question: "posso ligar o motor antes de parafusar ele na base? é só pra testar se tá girando"
+  persona: operator
+  language: pt
+  category: safety
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 1
+      text: "Do not apply power to the motor until the motor is securely mounted by its mounting holes."
+  reference_answer: "Não. O manual proíbe energizar o motor antes de ele estar firmemente fixado pelos furos de montagem — mesmo para um teste rápido. Equipamento rotativo mal fixado pode causar ferimentos graves ou fatais."
+  requires_image: false
+  notes: "Cross-lingual safety case; realistic shop-floor shortcut the safety notice explicitly forbids (guideline 5)."
+
+- id: lb5001-004
+  question: "chegou um motor novo aqui na doca, o que eu tenho que conferir antes de aceitar?"
+  persona: operator
+  language: pt
+  category: procedure
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 1
+      text: "Inspect the motor for damage before accepting it. The Motor shaft should rotate freely with no rubs. Report any damage immediately to the commercial carrier that delivered your motor."
+  reference_answer: "Antes de aceitar, inspecione o motor procurando danos e confira se o eixo gira livremente, sem raspar. Se encontrar qualquer dano, informe imediatamente a transportadora que entregou o motor."
+  requires_image: false
+  notes: "Cross-lingual; 'Receiving' section, open-ended operator phrasing far from the section title wording."
+
+- id: lb5001-005
+  question: "When should I choose a TEFC enclosure over an ODP motor?"
+  persona: technical
+  language: en
+  category: conceptual
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 1
+      text: "ODP, Open drip proof motors are intended for use in clean, dry locations with adequate supply of cooling air. These motors should not be used in the presence of flammable or combustible materials."
+    - document: LB5001.pdf
+      page: 1
+      text: "TEFC, totally enclosed motors are intended for use where moisture, dirt and/or corrosive materials are present in indoor and outdoor locations."
+  reference_answer: "Choose TEFC (totally enclosed) when the environment has moisture, dirt and/or corrosive materials, indoors or outdoors. ODP (open drip proof) is only for clean, dry locations with an adequate supply of cooling air, and must not be used near flammable or combustible materials since open motors can emit flame or molten metal if the insulation fails."
+  requires_image: false
+  notes: "Multi-excerpt conceptual case: the answer requires both enclosure definitions, testing recall beyond the first relevant chunk."
+
+- id: lb5001-006
+  question: "qual graxa que usa nesses motor baldor? qualquer uma serve?"
+  persona: operator
+  language: pt
+  category: spec_lookup
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 2
+      text: "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations."
+    - document: LB5001.pdf
+      page: 2
+      text: "Caution: Keep grease clean. Mixing dissimilar grease is not recommended."
+  reference_answer: "Os motores Baldor saem de fábrica com graxa Polyrex EM (Exxon Mobil). Não é qualquer uma que serve: misturar graxas diferentes não é recomendado, e se quiser usar outra graxa é preciso consultar um Baldor Service Center."
+  expected_facts: ["Polyrex EM"]
+  requires_image: false
+  notes: "Cross-lingual; colloquial two-part question whose complete answer needs the lubricant spec AND the no-mixing caution."
+
+- id: lb5001-007
+  question: "What is the recommended replacement interval for the Baldor shaft grounding brush assembly on a 1200 RPM motor?"
+  persona: technical
+  language: en
+  category: table_lookup
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 2
+      text: |-
+        Replacement Intervals
+        Rated speed (RPM)
+        3600 1800 1200 900
+        22,000Hrs. 44,000Hrs. 66,000Hrs. 88,000Hrs.
+  reference_answer: "For a 1200 RPM motor, the recommended interval for changing the shaft grounding brush assembly is 66,000 hours. The interval applies to all frame sizes."
+  expected_facts: ["66,000"]
+  requires_image: false
+  notes: "Headerless-looking table (speed columns only) — checks the ingestion kept column↔value alignment."
+
+- id: lb5001-008
+  question: "me ensina o jeito certo de engraxar o motor pra não estragar o rolamento"
+  persona: operator
+  language: pt
+  category: procedure
+  gold_excerpts:
+    - document: LB5001.pdf
+      page: 2
+      text: "Clean the grease fitting (or area around grease hole, if equipped with slotted grease screws). If motor has a purge plug, remove it. Motors can be regreased while stopped (at less than 80°C) or running."
+    - document: LB5001.pdf
+      page: 2
+      text: "Too much grease or injecting grease to quickly can cause premature bearing failure. Slowly apply the recommended amount of grease, taking 1 minute or so to apply. Operate motor for 20 minutes, then reinstall purge plug if previously removed."
+  reference_answer: "Primeiro limpe a graxeira (ou a área do furo de graxa) e, se o motor tiver bujão de purga, remova-o. Pode engraxar com o motor parado (abaixo de 80 °C) ou rodando. Aplique a graxa devagar, levando cerca de 1 minuto — graxa demais ou injetada rápido demais causa falha prematura do rolamento. Depois deixe o motor operar por 20 minutos e reinstale o bujão de purga."
+  requires_image: false
+  notes: "Cross-lingual multi-excerpt procedure; the 'why' (bearing failure) is in the second excerpt."

@@ -89,6 +89,11 @@ Knowledge lives **as close as possible to what it describes**:
 - Any directory holding **two or more concepts** gets an `index.md`
   listing them; the root `index.md` links each module's knowledge once it
   exists.
+- **Code and configuration files carry no comments.** What would have
+  been a comment — a file header, a caveat, a rationale — lives in a
+  co-located OKF concept instead (created through the approval gate
+  above) or in the module's existing concept, and only if it truly needs
+  saying. Knowledge buried in comments is invisible to the bundle.
 
 Because the repo tree _is_ the bundle tree, **every `.md` file anywhere in
 the repo must carry OKF frontmatter with a `type`**, except:
@@ -145,6 +150,7 @@ sources: # when the concept derives from material — cite it
 | `Architecture` | Descriptions of system structure and its rationale.             |
 | `Module`       | A co-located overview of one code module: purpose, boundaries, and the decisions behind it. |
 | `Glossary`     | Ubiquitous language: `docs/glossary.md` project-wide, `glossary.md` co-located per module. |
+| `Spec`         | An approved design for a subsystem before it is built, in `specs/` at the repo root; decision records distill its durable choices. |
 
 New types are allowed when none fits — pick a descriptive name and add it
 to this table.
