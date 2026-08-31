@@ -1,0 +1,12 @@
+# Bundle Update Log
+
+## 2026-08-31
+
+- **Creation**: Recorded [Decision 0003](/docs/decisions/0003-vendor-and-adapt-agent-skills.md) — the 14 agent skills are vendored into `.agents/skills/` (fixing broken symlinks) and adapted to this repo: ADR → OKF decision records, `CONTEXT.md` → `Glossary` concepts, TypeScript → Python, tracker dependencies removed. The `Glossary` type joined the [Authoring Guide](/docs/authoring-guide.md).
+- **Update**: Skills relocated to `.claude/skills/` as standalone copies (the symlink-through-`.agents/` layout was dropped); [Decision 0003](/docs/decisions/0003-vendor-and-adapt-agent-skills.md) amended. The [Authoring Guide](/docs/authoring-guide.md)'s approval gate is conversational: agents propose new concepts and wait for the owner's OK.
+- **Update**: Moved the research concepts into a dedicated [research/](/research/) area (backlink source for future decisions), keeping `docs/` for cross-cutting policy and process concepts. The [Authoring Guide](/docs/authoring-guide.md) now requires owner approval before any new concept is created.
+- **Creation**: [Case Files Corpus Findings](/research/case-files-corpus-findings.md) — empirical survey of the `case_files/` PDFs; documents the CESTARI broken-CMap text layer (silent `�` output without Tesseract) and measured pymupdf4llm 1.28.2 behavior (tables, inline image refs, `toc_items`, `page_chunks` schema drift).
+- **Creation**: [Retrieval Strategy Evidence](/research/retrieval-strategy-evidence.md) — cited external evidence for hybrid search, small-to-big/parent-document retrieval, chunk sizing, and PDF-parser benchmarks, gathered to ground future ingestion/retrieval decision records.
+- **Update**: Re-rooted the bundle at the repo root so module knowledge can be co-located with module code; recorded [Decision 0002](/docs/decisions/0002-colocate-docs-with-code.md) and deprecated [Decision 0001](/docs/decisions/0001-okf-bundle-at-docs.md). `okf_spec.md` gained minimal `Reference` frontmatter to keep the bundle conformant.
+- **Creation**: Recorded [Decision 0001](/docs/decisions/0001-okf-bundle-at-docs.md) — documentation lives in an OKF bundle rooted at `docs/`.
+- **Initialization**: Established the knowledge bundle with the [Challenge Brief](/docs/challenge.md), [Golden Rules](/docs/golden-rules.md), [Development Workflow](/docs/development-workflow.md), and [Authoring Guide](/docs/authoring-guide.md).
