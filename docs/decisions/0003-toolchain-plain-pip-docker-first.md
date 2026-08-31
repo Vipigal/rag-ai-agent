@@ -4,6 +4,7 @@ title: 0003 — Toolchain: plain pip + venv, Python 3.14, docker-first
 description: The project uses classic pip with a pinned requirements.txt inside a venv (no uv/poetry), Python 3.14 provided by pyenv on the host, and Docker Compose as the official way evaluators run the system.
 tags: [toolchain, pip, docker, python-version, developer-ux]
 status: stable
+verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
 generated: { by: claude_code/claude-fable-5, at: 2026-08-31T20:24:21Z }
 ---
 

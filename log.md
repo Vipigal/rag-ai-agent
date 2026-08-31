@@ -2,6 +2,12 @@
 
 ## 2026-08-31
 
+- **Creation**: Recorded [Decision 0005](/docs/decisions/0005-retrieval-architecture.md) — the read side gets two ports (`VectorStore` for persistence, `Retriever` as the strategy seam where hybrid/rerank/small-to-big experiments live); the persisted chunk payload is the ingestion↔retrieval contract; one `EmbeddingModel` instance serves both paths; provider embedders (OpenAI/Gemini, same key as the LLM) are first-class; Qdrant is the starting vector store; answering is dual-path — deterministic seed retrieval plus a `query_knowledge` tool over the same `Retriever`, with the tool loop in `AgentService`.
+- **Update**: [System Architecture](/docs/architecture.md) revised to match Decision 0005 — `Retriever` port and `RetrievedChunk`/LLM-vocabulary entities added to the map, dual-path question flow, the persisted-chunk contract, and new rules 8–9 (single embedder instance; `AgentService` reads only through `Retriever`, tool loop in the domain).
+
+- **Creation**: [System Architecture — Ports & Adapters Lite](/docs/architecture.md) — the cross-cutting map agents read before implementing any module: hexagonal-lite shape, ports/adapters/domain-service concepts, the eight rules, and extension recipes. Linked from the root `index.md` under a new Architecture section.
+- **Creation**: Recorded [Decision 0004](/docs/decisions/0004-ports-and-adapters-lite.md) — minimal hexagonal architecture: framework-free domain in `src/domain` (dataclass entities, `typing.Protocol` ports, `Service`-suffixed domain services), adapters per pipeline stage, ports only at real seams (fakes count), one composition root, LangChain confined to adapters, and the supremacy clause: architecture yields to evals.
+
 - **Creation**: Recorded [Decision 0003](/docs/decisions/0003-toolchain-plain-pip-docker-first.md) — classic pip + venv with pinned requirements (no uv/poetry), Python 3.14 via pyenv on the host, docker-first delivery with `docker compose up` as the evaluators' single command, hot reload via compose bind mount. First code landed with it: the `src/api` module scaffold (FastAPI `GET /health`, built test-first).
 
 - **Update**: The `Glossary` type joined the [Authoring Guide](/docs/authoring-guide.md), and its approval gate is conversational: agents propose new concepts and wait for the owner's OK.

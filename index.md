@@ -12,6 +12,10 @@ okf_version: "0.2"
 - [Development Workflow](docs/development-workflow.md) - Testing-first and eval-first: how modules get built (TDD) and how system accuracy gets measured (evals).
 - [Authoring Guide](docs/authoring-guide.md) - How to add knowledge to this bundle: co-location with code, what deserves documentation, and the OKF conventions.
 
+# Architecture
+
+- [System Architecture — Ports & Adapters Lite](docs/architecture.md) - The operating map of the codebase: structure, concepts, rules, and how to extend the system. Read before implementing any module.
+
 # Decisions
 
 - [Decisions](docs/decisions/) - Architecture and project decisions, one concept per decision, numbered chronologically.
