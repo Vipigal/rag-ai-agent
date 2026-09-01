@@ -1,6 +1,13 @@
 # Bundle Update Log
 
+## 2026-09-01
+
+- **Update**: [Ingestion Module](/src/ingestion/ingestion.md) — recorded the measured per-stage timing that settled the parallel-ingestion question: extraction 63.3 s (GIL-bound; threads give nothing) vs embedding 7.3 s (parallelizable, but a ~5 s ceiling), so ingestion stays sequential; real extraction speedups are processes or eval-gated table-detection changes.
+
 ## 2026-08-31
+
+- **Creation**: [Ingestion Module](/src/ingestion/ingestion.md) — first co-located module concept under `src/`: what the naive extractor/chunker pair does that code cannot say (breadcrumb carry-forward and its stale-level caveat, CESTARI `�` indexed on purpose, first full-corpus baseline numbers: 570 chunks / ~51 s, live-verified idempotent re-ingestion). Linked from the root index's Modules section.
+- **Update** (implementation, not a concept): `POST /documents` landed per [Decision 0007](/docs/decisions/0007-naive-ingestion-baseline.md) — domain entities/ports/service plus the four baseline adapters, all TDD (21 tests green), Qdrant service in docker compose, end-to-end verified through the container path with the full `case_files/` corpus.
 
 - **Creation**: [Golden Dataset](/evals/golden/golden-dataset.md) — co-located `Module` concept for `evals/golden/`, absorbing everything that lived in YAML header comments: per-file overview, page-numbering semantics (CESTARI printed→physical +4 offset and trilingual mirroring behind `alternates`), transcription caveats, canary roles, and negative-case semantics. The YAML files are now comment-free.
 - **Update**: [Authoring Guide](/docs/authoring-guide.md) records the owner's norm: code and configuration files carry no comments — comment-worthy knowledge lives in a co-located OKF concept (through the approval gate) or in the module's existing concept.

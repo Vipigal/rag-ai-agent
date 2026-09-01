@@ -27,6 +27,7 @@ carries its own concepts and, once it holds two or more, an `index.md`
 (see the [Authoring Guide](docs/authoring-guide.md)). Entries appear here
 as the tree grows.
 
+- [Ingestion Module](src/ingestion/ingestion.md) - The write path's extraction and chunking stage — pymupdf4llm adapter with TOC-breadcrumb sections and the fixed-size chunker, deliberately naive per Decision 0007, with the CESTARI broken-text behavior indexed on purpose as the eval baseline.
 - [Golden Dataset](evals/golden/golden-dataset.md) - Co-located overview of the 93-case golden dataset — what each YAML file covers, page-numbering and transcription semantics per source PDF, each file's canary role, and the semantics of negative cases.
 
 # Specs
