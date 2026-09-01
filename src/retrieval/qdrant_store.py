@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, PointStruct, ScoredPoint, VectorParams
 
-from domain.models import Chunk
+from domain.models import Chunk, RetrievedChunk
 
 
 class QdrantVectorStore:
@@ -39,4 +39,35 @@ class QdrantVectorStore:
                 )
                 for chunk, vector in zip(chunks, vectors, strict=True)
             ],
+        )
+
+    def search(self, vector: list[float], k: int) -> list[RetrievedChunk]:
+        points = self._client.query_points(
+            self._collection, query=vector, limit=k, with_payload=True
+        ).points
+        return [
+            RetrievedChunk(chunk=self._to_chunk(point), score=point.score)
+            for point in points
+        ]
+
+    def count(self) -> int:
+        return self._client.count(self._collection).count
+
+    def _to_chunk(self, point: ScoredPoint) -> Chunk:
+        payload = point.payload
+        if payload is None:
+            raise ValueError(
+                f"point {point.id} in collection '{self._collection}' has no payload; "
+                "it was not written through this store"
+            )
+        return Chunk(
+            id=str(point.id),
+            document_id=payload["document_id"],
+            filename=payload["filename"],
+            text=payload["text"],
+            page=payload["page"],
+            section=payload["section"],
+            index_in_doc=payload["index_in_doc"],
+            kind=payload["kind"],
+            metadata=payload["metadata"],
         )

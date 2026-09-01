@@ -36,3 +36,10 @@ class Chunk:
     index_in_doc: int
     kind: str = "text"
     metadata: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class RetrievedChunk:
+    chunk: Chunk
+    score: float
+    retrieval_source: str = "seed"
