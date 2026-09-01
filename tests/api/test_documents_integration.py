@@ -48,6 +48,10 @@ def test_uploaded_pdf_lands_in_the_vector_store_with_provenance():
 
     points, _ = qdrant.scroll("chunks", with_payload=True, limit=10)
     assert len(points) == body["total_chunks"]
-    assert {point.payload["filename"] for point in points} == {"motor.pdf"}
-    assert any("the motor draws 2.3 kW" in point.payload["text"] for point in points)
-    assert all(point.payload["page"] == 1 for point in points)
+    payloads: list[dict] = []
+    for point in points:
+        assert point.payload is not None
+        payloads.append(point.payload)
+    assert {payload["filename"] for payload in payloads} == {"motor.pdf"}
+    assert any("the motor draws 2.3 kW" in payload["text"] for payload in payloads)
+    assert all(payload["page"] == 1 for payload in payloads)

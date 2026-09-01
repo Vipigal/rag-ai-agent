@@ -1,0 +1,193 @@
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+from collections.abc import Callable
+from datetime import datetime, timezone
+from pathlib import Path
+
+from domain.ports import Retriever, VectorStore
+from evaluation.dataset import load_golden_cases
+from evaluation.metrics import evaluate_case
+from evaluation.report import CaseRun, RunInfo, build_payload, render
+
+
+def execute_run(
+    *,
+    label: str,
+    k: int,
+    threshold: float,
+    golden_dir: Path,
+    results_dir: Path,
+    retriever: Retriever,
+    store: VectorStore,
+    ingest: Callable[[], None],
+    embedding_model: str,
+    collection: str,
+    git_sha: str | None,
+    git_dirty: bool,
+    now: Callable[[], datetime],
+    clock: Callable[[], float],
+    compare_path: Path | None,
+    no_compare: bool,
+    color: bool,
+    write_output: Callable[[str], None],
+) -> Path:
+    cases = load_golden_cases(golden_dir)
+    if store.count() == 0:
+        ingest()
+
+    case_runs: list[CaseRun] = []
+    unanswerable_excluded = 0
+    for case in cases:
+        if case.category == "unanswerable":
+            unanswerable_excluded += 1
+            continue
+        started = clock()
+        retrieved = retriever.retrieve(case.question, k)
+        latency_ms = (clock() - started) * 1000
+        result = evaluate_case(case, [r.chunk for r in retrieved], k, threshold)
+        case_runs.append(
+            CaseRun(
+                case=case,
+                result=result,
+                retrieved=tuple(retrieved),
+                latency_ms=latency_ms,
+            )
+        )
+
+    at = now()
+    run_info = RunInfo(
+        at=at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        label=label,
+        git_sha=git_sha,
+        git_dirty=git_dirty,
+        k=k,
+        token_overlap_threshold=threshold,
+        embedding_model=embedding_model,
+        collection=collection,
+    )
+    payload = build_payload(run_info, case_runs, unanswerable_excluded=unanswerable_excluded)
+
+    compare, compare_name = _resolve_compare(
+        results_dir, compare_path, no_compare, k, threshold
+    )
+
+    results_dir.mkdir(parents=True, exist_ok=True)
+    out_path = results_dir / f"{at.strftime('%Y%m%d-%H%M%S')}-{label}.json"
+    out_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    write_output(render(payload, compare, compare_name, color))
+    write_output(f"→ {out_path}")
+    return out_path
+
+
+def _resolve_compare(
+    results_dir: Path,
+    compare_path: Path | None,
+    no_compare: bool,
+    k: int,
+    threshold: float,
+) -> tuple[dict | None, str | None]:
+    if no_compare:
+        return None, None
+    if compare_path is not None:
+        return _load_json(compare_path), compare_path.name
+    if not results_dir.exists():
+        return None, None
+    for path in sorted(results_dir.glob("*.json"), reverse=True):
+        candidate = _load_json(path)
+        run = candidate["run"]
+        if run["k"] == k and run["token_overlap_threshold"] == threshold:
+            return candidate, path.name
+    return None, None
+
+
+def _load_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="python -m evaluation.run",
+        description="Run the retrieval eval over the golden dataset.",
+    )
+    parser.add_argument("--label", required=True)
+    parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--threshold", type=float, default=0.6)
+    compare_group = parser.add_mutually_exclusive_group()
+    compare_group.add_argument("--compare", type=Path, default=None)
+    compare_group.add_argument("--no-compare", action="store_true")
+    return parser
+
+
+def _git_state() -> tuple[str | None, bool]:
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        return sha, status != ""
+    except (OSError, subprocess.CalledProcessError):
+        return None, False
+
+
+def main() -> None:
+    from api.composition import (
+        build_ingestion_service,
+        build_vector_store,
+        embedding_model_name,
+        get_embedder,
+    )
+    from retrieval.vector_retriever import VectorRetriever
+
+    args = build_parser().parse_args()
+    collection = os.environ.get("EVAL_QDRANT_COLLECTION", "eval_chunks")
+    store = build_vector_store(collection)
+    ingestion_service = build_ingestion_service(store)
+    case_files_dir = Path("case_files")
+
+    def ingest() -> None:
+        files = [
+            (path.name, path.read_bytes())
+            for path in sorted(case_files_dir.glob("*.pdf"))
+        ]
+        ingestion_service.ingest(files)
+
+    git_sha, git_dirty = _git_state()
+    execute_run(
+        label=args.label,
+        k=args.k,
+        threshold=args.threshold,
+        golden_dir=Path("evals/golden"),
+        results_dir=Path("evals/results"),
+        retriever=VectorRetriever(get_embedder(), store),
+        store=store,
+        ingest=ingest,
+        embedding_model=embedding_model_name(),
+        collection=collection,
+        git_sha=git_sha,
+        git_dirty=git_dirty,
+        now=lambda: datetime.now(timezone.utc),
+        clock=time.perf_counter,
+        compare_path=args.compare,
+        no_compare=args.no_compare,
+        color=sys.stdout.isatty() and "NO_COLOR" not in os.environ,
+        write_output=print,
+    )
+
+
+if __name__ == "__main__":
+    main()

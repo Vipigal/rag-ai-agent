@@ -4,7 +4,7 @@ title: System Architecture — Ports & Adapters Lite
 description: The operating map of the codebase — the hexagonal-lite structure, the concepts behind it (ports, adapters, domain services, composition root), the rules every implementation must follow, and how to extend the system.
 tags: [architecture, hexagonal, ports-and-adapters, ddd, protocols]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T21:16:46Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-01T16:26:51Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
 sources:
   - id: cosmic-python
@@ -44,8 +44,11 @@ src/
                 later ingest-time augmentation)
   retrieval/    adapters for embeddings and the vector store (Qdrant),
                 plus the Retriever strategies (vector, hybrid, decorators)
-  llm/          adapters for LLM providers (LangChain today, swappable)
+  llm/          adapters for LLM providers (PydanticAI direct today,
+                swappable — Decision 0008)
   api/          FastAPI edge: thin routes + the composition root
+  evaluation/   the eval harness: golden-dataset loader, matching,
+                metrics, report, CLI runner (data lives in /evals)
 ```
 
 Two request flows, one shared domain:
@@ -75,7 +78,7 @@ reindex — its eval must cover both sides.
   no inheritance or registration. Ports are named by capability
   (`PdfExtractor`, `VectorStore`), never by tool.
 - **Adapter** — a concrete class satisfying a port, named
-  `<tool><Port>` (e.g. `Pymupdf4llmExtractor`, `LangchainLLM`), living in
+  `<tool><Port>` (e.g. `Pymupdf4llmExtractor`, `PydanticAiLLM`), living in
   its stage package. Adapters may import anything; the domain imports no
   adapter, ever — dependency inversion is that one-way arrow.
 - **Entity vs domain service** — entities (`Document`, `Chunk`, `Answer`)

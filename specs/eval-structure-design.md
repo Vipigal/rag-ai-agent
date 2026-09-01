@@ -166,10 +166,12 @@ evals/
     negatives.yaml
 ```
 
-The harness (future task) lives under `evals/` too and treats the YAML
-files as its input contract. Dataset grows per the Development Workflow
-rule: every wrong answer found in manual use becomes a case before it is
-fixed.
+The harness code lives in `src/evaluation/` — where all importable code in
+this repo lives — and treats the YAML files as its input contract; run
+results land in `evals/results/` (see the
+[Eval Harness spec](/specs/eval-harness-design.md)). Dataset grows per
+the Development Workflow rule: every wrong answer found in manual use
+becomes a case before it is fixed.
 
 # Authoring process (this session)
 

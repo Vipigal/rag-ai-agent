@@ -1,4 +1,4 @@
-from domain.models import Chunk, Document, Page, chunk_id
+from domain.models import Chunk, Document, Page, RetrievedChunk, chunk_id
 from domain.services.ingestion_pipeline import IngestionPipelineService
 
 SHA_ONE = "f315915be2378786af1785ccc6a226aad15ad69d96465ec0105b186066cb2681"
@@ -39,6 +39,12 @@ class FakeVectorStore:
     def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
         self.chunks.extend(chunks)
         self.vectors.extend(vectors)
+
+    def search(self, vector: list[float], k: int) -> list[RetrievedChunk]:
+        raise NotImplementedError
+
+    def count(self) -> int:
+        raise NotImplementedError
 
 
 def make_service(store: FakeVectorStore) -> IngestionPipelineService:

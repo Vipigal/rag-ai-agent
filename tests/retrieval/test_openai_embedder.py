@@ -1,4 +1,7 @@
 from types import SimpleNamespace
+from typing import cast
+
+from openai import OpenAI
 
 from retrieval.openai_embedder import OpenaiEmbeddingModel
 
@@ -20,7 +23,7 @@ class FakeOpenAI:
 
 
 def test_embeds_texts_in_input_order_even_if_api_reorders():
-    embedder = OpenaiEmbeddingModel(FakeOpenAI(), model="text-embedding-3-small")
+    embedder = OpenaiEmbeddingModel(cast(OpenAI, FakeOpenAI()), model="text-embedding-3-small")
 
     vectors = embedder.embed(["a", "bb", "ccc"])
 
@@ -29,7 +32,9 @@ def test_embeds_texts_in_input_order_even_if_api_reorders():
 
 def test_large_inputs_are_split_into_api_sized_batches():
     client = FakeOpenAI()
-    embedder = OpenaiEmbeddingModel(client, model="text-embedding-3-small", max_batch=2)
+    embedder = OpenaiEmbeddingModel(
+        cast(OpenAI, client), model="text-embedding-3-small", max_batch=2
+    )
 
     vectors = embedder.embed(["a", "bb", "ccc", "dddd", "eeeee"])
 

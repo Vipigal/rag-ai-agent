@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import openai
 import pytest
 from fastapi.testclient import TestClient
@@ -66,7 +66,7 @@ def test_request_without_files_field_is_rejected(service):
 def test_embedding_provider_failure_maps_to_502(service):
     def explode(files):
         raise openai.APIConnectionError(
-            request=httpx.Request("POST", "https://api.openai.com/v1/embeddings")
+            request=httpx2.Request("POST", "https://api.openai.com/v1/embeddings")
         )
 
     service.ingest = explode

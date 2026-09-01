@@ -5,6 +5,7 @@ description: The first POST /documents pipeline is deliberately naive — pymupd
 tags: [ingestion, baseline, chunking, embeddings, idempotency, qdrant]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-08-31T22:50:49Z }
+verified: { by: human:vinicius, at: 2026-09-01T17:22:00Z }
 sources:
   - id: ingestion-spec
     resource: /specs/ingestion-baseline-design.md

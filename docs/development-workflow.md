@@ -67,6 +67,17 @@ code.
 
 # Working agreement for agents
 
+- **Agents never commit.** The owner (`human:vinicius`) reviews every
+  change in the editor — code, docs, eval results — and makes every
+  commit himself. Agents leave finished work in the working tree and
+  report it; a spec or plan that mentions committing an artifact means
+  the owner commits it after review.
+- **Typecheck gate**: `make typecheck` (pyright, `standard` mode, pinned
+  in `requirements-dev.txt`) must report zero errors before any task is
+  considered finished. Violations are fixed with type narrowing, type
+  guards, and defensive validation at boundaries — never blanket
+  ignores or silent casts (test fakes may `cast` to satisfy an SDK
+  type).
 - Starting a module? Write its first failing test before its first line of
   implementation.
 - Touching the RAG pipeline (chunking, embedding, retrieval, prompts)? Run

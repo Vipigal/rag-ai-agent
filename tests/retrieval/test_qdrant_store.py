@@ -63,3 +63,30 @@ def test_re_adding_same_chunks_does_not_duplicate(client, store):
 def test_mismatched_chunks_and_vectors_are_rejected(store):
     with pytest.raises(ValueError):
         store.add([make_chunk(0, "lonely")], [])
+
+
+def test_search_returns_ranked_retrieved_chunks_with_reconstructed_payload(store):
+    close = make_chunk(0, "graxa polyrex")
+    far = make_chunk(1, "flange tipo C")
+    store.add([close, far], [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+
+    results = store.search([0.9, 0.1, 0.0], k=2)
+
+    assert [result.chunk for result in results] == [close, far]
+    assert results[0].score > results[1].score
+    assert results[0].retrieval_source == "seed"
+
+
+def test_search_returns_at_most_k_results(store):
+    chunks = [make_chunk(index, f"chunk {index}") for index in range(3)]
+    store.add(chunks, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+
+    assert len(store.search([1.0, 0.0, 0.0], k=2)) == 2
+
+
+def test_count_reflects_stored_points(store):
+    assert store.count() == 0
+
+    store.add([make_chunk(0, "x")], [[0.1, 0.2, 0.3]])
+
+    assert store.count() == 1
