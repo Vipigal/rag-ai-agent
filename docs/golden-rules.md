@@ -4,11 +4,11 @@ title: Golden Rules
 description: The challenge's six evaluation criteria, adopted as the non-negotiable priorities that every change in this repo must serve.
 tags: [policy, evaluation-criteria, north-star]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T18:40:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-08-31T18:28:00Z }
 sources:
   - id: challenge-pdf
-    resource: /ChallengeMachineLearningEngineering-LLM.pdf
+    resource: /docs/challenge.pdf
     title: "[Challenge] Machine Learning Engineering - LLM"
 ---
 

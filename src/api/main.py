@@ -1,3 +1,5 @@
+import logging
+
 import openai
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -5,6 +7,9 @@ from pydantic_ai.exceptions import ModelAPIError
 
 from api.routes.documents import router as documents_router
 from api.routes.question import router as question_router
+
+logging.basicConfig(format="%(levelname)s:     %(name)s: %(message)s")
+logging.getLogger().setLevel(logging.INFO)
 
 app = FastAPI(title="RAG Agent API")
 app.include_router(documents_router)

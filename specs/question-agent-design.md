@@ -4,7 +4,7 @@ title: Question Agent — Design & Implementation Plan
 description: Approved design for POST /question — the domain LLM vocabulary and LLM port, the AgentService dual-path flow (seed retrieval + bounded query_knowledge tool loop) with the [i]-citation / NO_ANSWER protocol, the PydanticAI direct adapter, the thin route, composition/config — plus the ordered TDD implementation plan (no separate plan document), the implementation notes from the first landing (2026-09-01) and the Decision 0009 revision (2026-09-02) — structured AgentReply output, function-derived tools, chunk ids as citation handles, XML-rendered context in a system message.
 tags: [agent, question, llm, tool-loop, citations, pydantic-ai, design, spec]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:30:26Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:56:16Z }
 verified: { by: human:vinicius, at: 2026-09-01T18:58:00Z }
 sources:
   - id: challenge
@@ -366,7 +366,8 @@ recorded here rather than in the code:
    `build_ingestion_service`); `get_agent_service()` is the cached
    production wiring. `docker-compose.yml` passes the four knobs through
    with their defaults so `.env` reaches the container, and `make up` now
-   runs `docker compose up -d --build` — a dependency change must rebuild
+   runs `docker compose up -d --build` (foreground, without `-d`, since
+   [Decision 0010](/docs/decisions/0010-examiner-developer-ux.md)) — a dependency change must rebuild
    the image.
 8. **Route validation** uses `StringConstraints(strip_whitespace=True,
    min_length=1)`, so whitespace-only questions are also 422.

@@ -5,10 +5,16 @@ description: The project uses classic pip with a pinned requirements.txt inside 
 tags: [toolchain, pip, docker, python-version, developer-ux]
 status: stable
 verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T20:24:21Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 ---
 
 # Context
+
+> **Amended by [Decision 0010](/docs/decisions/0010-examiner-developer-ux.md)**
+> (2026-09-02): Python is no longer pinned to 3.14 — the floor is 3.12,
+> `.python-version` is untracked, and `make up` runs compose in the
+> foreground behind a Qdrant healthcheck. Pip + venv with pinned
+> requirements and docker-first delivery stand.
 
 The project needs a Python toolchain and a run story for two audiences:
 the owner developing locally (TypeScript/Node background, values a familiar

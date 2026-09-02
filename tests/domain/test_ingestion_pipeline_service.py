@@ -1,3 +1,7 @@
+import logging
+
+import pytest
+
 from domain.models import Chunk, Document, Page, RetrievedChunk, chunk_id
 from domain.services.ingestion_pipeline import IngestionPipelineService
 
@@ -108,3 +112,49 @@ def test_ingest_derives_document_identity_from_content():
 
     assert {c.document_id for c in store.chunks} == {SHA_ONE, SHA_TWO}
     assert {c.filename for c in store.chunks} == {"one.pdf", "two.pdf"}
+
+
+def make_clock():
+    ticks = iter(float(i) for i in range(100))
+    return lambda: next(ticks)
+
+
+def test_ingest_logs_progress_per_file_and_totals(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO, logger="domain.services.ingestion_pipeline")
+    service = IngestionPipelineService(
+        extractor=FakeExtractor(),
+        chunker=fake_chunker,
+        embedder=FakeEmbedder(),
+        store=FakeVectorStore(),
+        clock=make_clock(),
+    )
+
+    service.ingest([("one.pdf", b"%PDF fake one"), ("two.pdf", b"%PDF fake two")])
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "ingesting 2 file(s)",
+        "one.pdf: extracting (0.0 MB)",
+        "one.pdf: 1 page(s) extracted in 1.0s",
+        "one.pdf: 2 chunk(s) embedded and indexed in 1.0s",
+        "two.pdf: extracting (0.0 MB)",
+        "two.pdf: 1 page(s) extracted in 1.0s",
+        "two.pdf: 2 chunk(s) embedded and indexed in 1.0s",
+        "done: 2 document(s), 4 chunk(s) indexed in 7.0s",
+    ]
+
+
+def test_ingest_logs_when_a_document_yields_no_text(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO, logger="domain.services.ingestion_pipeline")
+    service = IngestionPipelineService(
+        extractor=FakeExtractor(),
+        chunker=lambda document, pages: [],
+        embedder=FakeEmbedder(),
+        store=FakeVectorStore(),
+        clock=make_clock(),
+    )
+
+    service.ingest([("blank.pdf", b"%PDF blank")])
+
+    assert "blank.pdf: no text extracted, nothing to index" in [
+        record.getMessage() for record in caplog.records
+    ]

@@ -4,11 +4,11 @@ title: Challenge Brief — ML Engineering (LLM)
 description: The interview challenge this repo solves — a RAG system for question answering over uploaded PDFs — with its required API contract and deliverables.
 tags: [challenge, requirements, api]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T18:40:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-08-31T18:34:00Z }
 sources:
   - id: challenge-pdf
-    resource: /ChallengeMachineLearningEngineering-LLM.pdf
+    resource: /docs/challenge.pdf
     title: "[Challenge] Machine Learning Engineering - LLM"
 ---
 

@@ -7,7 +7,7 @@ Engineering interview challenge. Python. The full brief lives in
 ## Start every session here
 
 1. Read `index.md` at the repo root — the whole repository is one OKF
-   knowledge bundle (OKF v0.2 format, spec in `okf_spec.md`), rooted here.
+   knowledge bundle (OKF v0.2 format, spec in `docs/okf-spec.md`), rooted here.
    Follow its links progressively into whatever concepts are relevant to
    your task.
 2. Load `docs/golden-rules.md` into context and keep it there. It holds the

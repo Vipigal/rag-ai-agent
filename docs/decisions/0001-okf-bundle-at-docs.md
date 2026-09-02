@@ -4,11 +4,11 @@ title: 0001 — Documentation lives in an OKF bundle at docs/
 description: OKF v0.2 is the official documentation format, rooted at docs/ rather than the repo root.
 tags: [documentation, okf, repo-structure]
 status: deprecated
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T18:40:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-08-31T18:35:00Z }
 sources:
   - id: okf-spec
-    resource: /okf_spec.md
+    resource: /docs/okf-spec.md
     title: Open Knowledge Format (OKF) v0.2 specification
 ---
 

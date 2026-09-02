@@ -4,7 +4,7 @@ title: Ingestion Module
 description: The write path's extraction and chunking stage — pymupdf4llm adapter with TOC-breadcrumb sections and the fixed-size chunker, deliberately naive per Decision 0007, with the CESTARI broken-text behavior indexed on purpose as the eval baseline.
 tags: [ingestion, pdf-extraction, chunking, pymupdf4llm, baseline]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T23:59:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-09-01T03:18:00Z }
 sources:
   - id: ingestion-spec
@@ -59,6 +59,14 @@ naive baseline defined in [Decision
   or touching table detection — the latter is a retrieval-quality
   decision (the golden dataset's `table_lookup` cases depend on it),
   eval-gated, never a perf freebie.
+- **The upload is visibly alive** (2026-09-02, [Decision
+  0010](/docs/decisions/0010-examiner-developer-ux.md)). With `make up` in
+  the foreground, the API log shows one INFO line per stage per file —
+  `extracting`, `page(s) extracted in`, `chunk(s) embedded and indexed
+  in` — plus a start line and a `done:` total, so the ~60 s corpus upload
+  can be followed. The one silent stretch is inside pymupdf4llm on the
+  WEG guia (~39 s of the extraction above); per-page logging would need
+  per-page extraction calls, an eval-gated ingestion change.
 - **Re-ingestion is idempotent** by deterministic IDs
   (`chunk_id(document_id, index)`, content-addressed `document_id`) —
   verified live: re-uploading a file leaves the point count unchanged.

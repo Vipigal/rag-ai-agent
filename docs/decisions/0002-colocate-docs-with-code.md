@@ -4,11 +4,11 @@ title: 0002 — Module documentation is co-located with module code
 description: The bundle is re-rooted at the repo root so each module's OKF concepts live in the directory that defines the module; docs/ keeps only cross-cutting knowledge.
 tags: [documentation, okf, repo-structure, co-location]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T18:40:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-08-31T19:49:00Z }
 sources:
   - id: okf-spec
-    resource: /okf_spec.md
+    resource: /docs/okf-spec.md
     title: Open Knowledge Format (OKF) v0.2 specification
 ---
 
@@ -39,7 +39,7 @@ across the codebase.
 OKF conformance (§11) requires every non-reserved `.md` in the bundle tree
 to carry frontmatter with a `type`. With the whole repo as the bundle:
 
-- `okf_spec.md` received a minimal `type: Reference` frontmatter block; the
+- `okf_spec.md` (now `/docs/okf-spec.md`) received a minimal `type: Reference` frontmatter block; the
   spec text itself remains verbatim.
 - **Exemption**: the repo-root `README.md` (when created) stays plain
   markdown — GitHub renders it as the landing page evaluators read first,

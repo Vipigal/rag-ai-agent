@@ -14,3 +14,7 @@ knowledge is co-located with the module's code (see the
 # Decisions
 
 - [Decisions](decisions/) - Architecture and project decisions, one concept per decision, numbered chronologically.
+
+# References
+
+- [OKF Specification v0.2](okf-spec.md) - The specification of the documentation format this repo's knowledge bundle is written in. Spec text is verbatim; only this frontmatter block is local.

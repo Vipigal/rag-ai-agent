@@ -4,7 +4,7 @@ title: Eval Harness Module
 description: How to run the retrieval eval (make eval / make eval-fresh) and what its code cannot say — the eval-collection re-ingestion procedure, the 0.6 token-overlap threshold and the containment subsumption, exclusion rules, the human-readable per-case results schema, and the baseline findings including the partially-broken CESTARI text layer and the cross-lingual failure axis.
 tags: [evals, harness, retrieval, metrics, baseline]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-01T19:10:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:27:00Z }
 sources:
   - id: spec
@@ -33,9 +33,11 @@ Decision 0006.[^decision-0006]
 
 # How to run
 
-Qdrant must be up (`make up`) and `OPENAI_API_KEY` available (the repo
-`.env` has to have it). The Makefile at the repo root is the entry
-point — it sources `.env` and sets the paths:
+Qdrant must be up — `make up` in another terminal, since it runs the
+stack in the foreground — and `OPENAI_API_KEY` set in the repo `.env`
+(`cp .env.example .env` first). The Makefile at the repo root is the
+entry point — it checks for `.venv` and `.env`, sources `.env` and sets
+the paths:
 
 ```
 make eval label=<label>

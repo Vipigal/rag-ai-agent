@@ -2,6 +2,9 @@
 okf_version: "0.2"
 ---
 
+Human readers: start with [README.md](README.md), the curated five-minute
+path through this bundle. Agents start here.
+
 # Project North
 
 - [Challenge Brief](docs/challenge.md) - What the system must do: the case, required features, API contract, and deliverables.
@@ -43,4 +46,4 @@ as the tree grows.
 
 # References
 
-- [OKF Specification v0.2](okf_spec.md) - The documentation format this bundle is written in.
+- [OKF Specification v0.2](docs/okf-spec.md) - The documentation format this bundle is written in.

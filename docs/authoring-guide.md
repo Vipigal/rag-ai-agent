@@ -4,17 +4,17 @@ title: Authoring Guide — Adding Knowledge to This Bundle
 description: How and when to add OKF concepts — the whole repo is one bundle, module knowledge is co-located with module code, and the bundle explains what the code cannot say.
 tags: [process, documentation, okf]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T19:45:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
 verified: { by: human:vinicius, at: 2026-08-31T18:35:00Z }
 sources:
   - id: okf-spec
-    resource: /okf_spec.md
+    resource: /docs/okf-spec.md
     title: Open Knowledge Format (OKF) v0.2 specification
 ---
 
 # What this bundle is for
 
-The **whole repository is one OKF bundle** ([OKF v0.2](/okf_spec.md)),[^okf-spec]
+The **whole repository is one OKF bundle** ([OKF v0.2](/docs/okf-spec.md)),[^okf-spec]
 rooted at the repo root, with the bundle spread across the codebase so that
 knowledge sits next to the code it describes (see
 [Decision 0002](/docs/decisions/0002-colocate-docs-with-code.md)). Its job
@@ -111,7 +111,7 @@ Knowledge must never live only in an exempt file or outside the bundle.
 # How to write a concept
 
 Every concept is a markdown file with YAML frontmatter, per the
-[OKF spec](/okf_spec.md). Conventions for this repo:
+[OKF spec](/docs/okf-spec.md). Conventions for this repo:
 
 ## Frontmatter
 
