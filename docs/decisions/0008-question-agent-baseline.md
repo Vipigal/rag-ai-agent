@@ -110,7 +110,9 @@ on-vs-off[^decision-0005]).
   module map now names PydanticAI direct as the current LLM adapter.
 - The fallback enhancement has a recorded, cheap path: add the `google`
   extra, wrap in `FallbackModel` at the composition root when
-  `GEMINI_API_KEY` is present.[^llm-evidence]
+  `GEMINI_API_KEY` is present.[^llm-evidence] Done in
+  [Decision 0012](/docs/decisions/0012-page-chunks-unit-vectors-and-providers.md) (2026-09-02):
+  `gpt-5-mini` falls back to `gemini-3.5-flash`.
 - Prompt text is a deliberate artifact in
   `src/domain/services/prompts.py`, iterated under evals only.
 - Serves _LLM Use_ (deliberate prompt + citation protocol), _Functionality_

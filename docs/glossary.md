@@ -30,6 +30,10 @@ _Avoid_: excerpt, passage, fragment, snippet
 The breadcrumb of outline headings a chunk sits under, outermost first.
 _Avoid_: heading path, TOC entry
 
+**Embedding unit**:
+A passage of one chunk — a paragraph, or a table row with its header — embedded as one vector under the document name and section; a chunk is scored by its best unit and returned whole.
+_Avoid_: sub-chunk, child chunk, passage vector
+
 ## Retrieval
 
 **Retriever**:

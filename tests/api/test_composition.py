@@ -1,11 +1,24 @@
 import pytest
+from pydantic_ai.models.fallback import FallbackModel
 
-from api.composition import build_agent_service
+from api.composition import (
+    build_agent_service,
+    embedding_dimensions,
+    embedding_model_name,
+    llm_model,
+)
 from domain.models import AgentReply, Chunk, Completion, Message, RetrievedChunk, ToolCall
 from domain.ports import Tool
 
 QUESTION = "what grease should I use?"
-KNOBS = ("LLM_MODEL", "RETRIEVAL_K", "AGENT_MAX_TOOL_ROUNDS", "QUERY_KNOWLEDGE_ENABLED")
+KNOBS = (
+    "LLM_MODEL",
+    "LLM_FALLBACK_MODEL",
+    "EMBEDDING_MODEL",
+    "RETRIEVAL_K",
+    "AGENT_MAX_TOOL_ROUNDS",
+    "QUERY_KNOWLEDGE_ENABLED",
+)
 
 
 class FakeRetriever:
@@ -83,3 +96,54 @@ def test_env_knob_caps_the_tool_rounds(monkeypatch: pytest.MonkeyPatch):
 
     assert retriever.calls == [(QUESTION, 5), ("grease", 5)]
     assert llm.tools_offered == [["query_knowledge"], []]
+
+
+def test_embedding_model_defaults_to_the_gemini_embedding_model():
+    assert embedding_model_name() == "google:gemini-embedding-001"
+    assert embedding_dimensions() == 3072
+
+
+def test_small_openai_embedding_model_is_a_supported_choice(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("EMBEDDING_MODEL", "openai:text-embedding-3-small")
+
+    assert embedding_dimensions() == 1536
+
+
+def test_unprefixed_or_unknown_embedding_models_are_rejected_naming_the_choices(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
+    with pytest.raises(ValueError, match="openai:text-embedding-3-small"):
+        embedding_model_name()
+
+
+@pytest.fixture
+def provider_keys(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
+
+
+def test_llm_defaults_to_gpt_5_mini_with_a_gemini_flash_fallback(provider_keys):
+    model = llm_model()
+
+    assert isinstance(model, FallbackModel)
+    assert [m.model_name for m in model.models] == ["gpt-5-mini", "gemini-3.5-flash"]
+
+
+def test_env_knobs_choose_the_primary_and_the_fallback_model(
+    provider_keys, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("LLM_MODEL", "openai-chat:gpt-5")
+    monkeypatch.setenv("LLM_FALLBACK_MODEL", "google:gemini-3.5-flash-lite")
+
+    model = llm_model()
+
+    assert isinstance(model, FallbackModel)
+    assert [m.model_name for m in model.models] == ["gpt-5", "gemini-3.5-flash-lite"]
+
+
+def test_blank_fallback_model_disables_the_fallback(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("LLM_FALLBACK_MODEL", "  ")
+
+    assert llm_model() == "openai:gpt-5-mini"

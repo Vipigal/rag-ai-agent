@@ -1,10 +1,10 @@
 ---
 type: Module
 title: Eval Harness Module
-description: How to run the retrieval eval (make eval / make eval-fresh) and what its code cannot say — the eval-collection re-ingestion procedure, the 0.6 token-overlap threshold and the containment subsumption, exclusion rules, the human-readable per-case results schema, and the baseline findings including the partially-broken CESTARI text layer and the cross-lingual failure axis.
+description: How to run the retrieval eval (make eval / make eval-fresh) and what its code cannot say — the eval-collection re-ingestion procedure, the 0.6 token-overlap threshold and the containment subsumption, exclusion rules, the human-readable per-case results schema, the baseline findings (CESTARI text layer, cross-lingual axis), and where every later run's reading lives (evals/results/experiment-findings.md).
 tags: [evals, harness, retrieval, metrics, baseline]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T04:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:27:00Z }
 sources:
   - id: spec
@@ -108,6 +108,15 @@ the typical cost. Interpretations the numbers alone don't carry:
   independent failure. Candidate experiments: stronger multilingual
   embeddings, query translation, hybrid sparse+dense (identifiers cross
   languages verbatim).
+
+# Where the findings live
+
+Every committed run in `evals/results/` is interpreted in [Eval
+Experiment Findings](/evals/results/experiment-findings.md): per step,
+the gate movement, the cases that flipped and the mechanism behind them,
+the negative results, and the failure axes that remain. This concept
+stays about *how* to run and read the harness; that one is about *what
+the runs taught*.
 
 [^spec]: Eval Harness — Design & Implementation Plan.
 

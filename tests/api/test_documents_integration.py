@@ -5,14 +5,18 @@ from qdrant_client import QdrantClient
 from api.composition import get_ingestion_service
 from api.main import app
 from domain.services.ingestion_pipeline import IngestionPipelineService
-from ingestion.chunking import fixed_size_chunks
+from ingestion.chunking import page_chunks
+from ingestion.embedding_units import embedding_units
 from ingestion.pymupdf4llm_extractor import Pymupdf4llmExtractor
 from retrieval.qdrant_store import QdrantVectorStore
 
 
 class FakeEmbedder:
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[float(len(text)), 1.0, 0.5] for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [float(len(text)), 1.0, 0.5]
 
 
 def make_pdf(marker: str) -> bytes:
@@ -25,7 +29,8 @@ def test_uploaded_pdf_lands_in_the_vector_store_with_provenance():
     qdrant = QdrantClient(":memory:")
     service = IngestionPipelineService(
         extractor=Pymupdf4llmExtractor(),
-        chunker=fixed_size_chunks,
+        chunker=page_chunks,
+        unit_splitter=embedding_units,
         embedder=FakeEmbedder(),
         store=QdrantVectorStore(qdrant, collection="chunks", vector_size=3),
     )

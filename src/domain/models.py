@@ -1,6 +1,8 @@
 import uuid
 from dataclasses import dataclass, field
 
+SECTION_SEPARATOR = " > "
+
 
 def chunk_id(document_id: str, index_in_doc: int) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"{document_id}:{index_in_doc}"))

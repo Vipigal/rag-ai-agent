@@ -1,7 +1,7 @@
 ---
 type: Module
 title: LLM Module
-description: The LLM port's adapter stage — PydanticAiLLM over pydantic_ai.direct, one provider call per complete() that offers function-derived strict tools and demands the AgentReply schema as native structured output — and what its code cannot say: the sync-only constraint that keeps the question route a plain def, schema derivation and validation with TypeAdapter, message grouping and tool_name-by-id resolution, which exceptions reach the API edge as 502 versus 500, that openai: resolves to the Responses API, the FallbackModel path, and how to test against FunctionModel.
+description: The LLM port's adapter stage — PydanticAiLLM over pydantic_ai.direct, one provider call per complete() that offers function-derived strict tools and demands the AgentReply schema as native structured output — and what its code cannot say: the sync-only constraint that keeps the question route a plain def, schema derivation and validation with TypeAdapter, message grouping and tool_name-by-id resolution, which exceptions reach the API edge as 502 versus 500, that openai: resolves to the Responses API, the FallbackModel wiring and why gemini-3.5-flash is the fallback, and how to test against FunctionModel.
 tags: [llm, adapter, pydantic-ai, structured-output, tool-calling, provider-errors]
 status: draft
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:30:26Z }
@@ -101,11 +101,13 @@ strict=True).tool_def` reads the function's signature and docstring:
   models wrap the SDK's `APIStatusError` (status ≥ 400) into
   `ModelHTTPError` and `APIConnectionError` into `ModelAPIError`;
   `ModelHTTPError` subclasses `ModelAPIError`, so `api/main.py`'s single
-  `ModelAPIError` handler covers both ("LLM provider error", 502). The
-  question path also embeds the query through the raw OpenAI SDK
-  (`VectorRetriever` → `OpenaiEmbeddingModel`), whose errors are **not**
-  wrapped — the pre-existing `openai.OpenAIError` handler catches those
-  ("OpenAI provider error", 502). Two handlers, two libraries, same
+  `ModelAPIError` handler covers both ("LLM provider error", 502). When
+  every model of the `FallbackModel` fails, pydantic-ai raises
+  `FallbackExceptionGroup` — an `ExceptionGroup`, **not** a
+  `ModelAPIError` — so a third handler answers 502 listing each model's
+  error ("every LLM provider failed: …"). The `openai.OpenAIError`
+  handler stays for SDK errors that escape unwrapped (the query embedding
+  now runs through pydantic-ai's `Embedder`). Three handlers, same
   status.
 - **Message grouping.** PydanticAI histories alternate `ModelRequest`
   (system/user/tool-return parts) and `ModelResponse` (text/tool-call
@@ -130,15 +132,25 @@ strict=True).tool_def` reads the function's signature and docstring:
   (`args: str | dict | None`). The adapter always hands the domain a dict
   via `args_as_dict()`, so `AgentService` can call the tool function
   with `**arguments`.
-- **The fallback enhancement is a composition-root change.**
-  `PydanticAiLLM` accepts `Model | str`; `model_request_sync` accepts a
-  `FallbackModel`, which tries models in sequence on 4xx/5xx. Wrapping
-  `OpenAIResponsesModel` + a Gemini model in `FallbackModel` at
-  `get_agent_service()` is the challenge's optional multi-provider
-  behavior; native Gemini needs the `google` extra
-  (`pydantic-ai-slim[openai,google]`), or none via Google's
-  OpenAI-compatible endpoint.[^llm-evidence] Nothing in `src/llm/` or the
-  domain moves — Gemini supports native JSON-schema output too.
+- **The fallback is wired at the composition root.** `llm_model()` in
+  `api/composition.py` returns `FallbackModel(LLM_MODEL, LLM_FALLBACK_MODEL)`
+  — default `openai:gpt-5-mini`, then `google:gemini-3.5-flash` — or the
+  plain model string when `LLM_FALLBACK_MODEL` is blank. `FallbackModel`
+  moves to the next model on `ModelAPIError` (4xx, 5xx, connection
+  errors), which is the challenge's optional multi-provider behavior as
+  one config value.[^llm-evidence] Nothing in `src/llm/` or the domain
+  moved: Gemini takes the same strict tool definitions and native
+  JSON-schema output. Verified 2026-09-02 through this adapter with a
+  tool offered: `gemini-3.5-flash` answers the schema and cites correctly
+  (1.9 s to 45 s observed — Gemini latency varies widely), and a
+  nonexistent primary model (404) fell through to it end to end. Why not
+  the others: **`gemini-2.5-flash` cannot be the fallback** — pydantic-ai
+  2.37.0 refuses native output together with function tools for it
+  (`UserError`, a 500, not a fallback trigger); `gemini-3.8-flash` kept
+  calling the tool instead of answering in the probe; `gemini-3.7-flash`
+  and `gemini-3.5-flash-lite` returned 503 "high demand" at the time, the
+  very failure the fallback exists for. The fallback needs
+  `GEMINI_API_KEY`, which the default embedder requires anyway.
 
 # How to test the adapter
 

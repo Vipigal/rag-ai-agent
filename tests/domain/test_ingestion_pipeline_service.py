@@ -30,17 +30,24 @@ def fake_chunker(document: Document, pages: list[Page]) -> list[Chunk]:
     ]
 
 
+def fake_unit_splitter(chunk: Chunk) -> list[str]:
+    return [block for block in chunk.text.split("\n\n") if block]
+
+
 class FakeEmbedder:
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[float(len(text))] for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [float(len(text))]
 
 
 class FakeVectorStore:
     def __init__(self) -> None:
         self.chunks: list[Chunk] = []
-        self.vectors: list[list[float]] = []
+        self.vectors: list[list[list[float]]] = []
 
-    def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+    def add(self, chunks: list[Chunk], vectors: list[list[list[float]]]) -> None:
         self.chunks.extend(chunks)
         self.vectors.extend(vectors)
 
@@ -56,6 +63,7 @@ def make_service(store: FakeVectorStore) -> IngestionPipelineService:
         extractor=FakeExtractor(),
         chunker=fake_chunker,
         embedder=FakeEmbedder(),
+        unit_splitter=fake_unit_splitter,
         store=store,
     )
 
@@ -64,14 +72,18 @@ def test_document_without_chunks_is_counted_but_never_embedded():
     store = FakeVectorStore()
 
     class RejectEmptyEmbedder:
-        def embed(self, texts: list[str]) -> list[list[float]]:
-            assert texts, "embed must not be called with no texts"
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            assert texts, "embed_documents must not be called with no texts"
             return [[1.0]] * len(texts)
+
+        def embed_query(self, text: str) -> list[float]:
+            return [1.0]
 
     service = IngestionPipelineService(
         extractor=FakeExtractor(),
         chunker=lambda document, pages: [],
         embedder=RejectEmptyEmbedder(),
+        unit_splitter=fake_unit_splitter,
         store=store,
     )
 
@@ -100,7 +112,9 @@ def test_ingest_stores_chunks_paired_with_their_embeddings():
         "contents of one.pdf [part 0]",
         "contents of one.pdf [part 1]",
     ]
-    assert store.vectors == [[float(len(c.text))] for c in store.chunks]
+    assert store.vectors == [
+        [[float(len(unit))] for unit in fake_unit_splitter(c)] for c in store.chunks
+    ]
 
 
 def test_ingest_derives_document_identity_from_content():
@@ -125,6 +139,7 @@ def test_ingest_logs_progress_per_file_and_totals(caplog: pytest.LogCaptureFixtu
         extractor=FakeExtractor(),
         chunker=fake_chunker,
         embedder=FakeEmbedder(),
+        unit_splitter=fake_unit_splitter,
         store=FakeVectorStore(),
         clock=make_clock(),
     )
@@ -135,10 +150,10 @@ def test_ingest_logs_progress_per_file_and_totals(caplog: pytest.LogCaptureFixtu
         "ingesting 2 file(s)",
         "one.pdf: extracting (0.0 MB)",
         "one.pdf: 1 page(s) extracted in 1.0s",
-        "one.pdf: 2 chunk(s) embedded and indexed in 1.0s",
+        "one.pdf: 2 chunk(s) as 2 unit(s) embedded and indexed in 1.0s",
         "two.pdf: extracting (0.0 MB)",
         "two.pdf: 1 page(s) extracted in 1.0s",
-        "two.pdf: 2 chunk(s) embedded and indexed in 1.0s",
+        "two.pdf: 2 chunk(s) as 2 unit(s) embedded and indexed in 1.0s",
         "done: 2 document(s), 4 chunk(s) indexed in 7.0s",
     ]
 
@@ -149,6 +164,7 @@ def test_ingest_logs_when_a_document_yields_no_text(caplog: pytest.LogCaptureFix
         extractor=FakeExtractor(),
         chunker=lambda document, pages: [],
         embedder=FakeEmbedder(),
+        unit_splitter=fake_unit_splitter,
         store=FakeVectorStore(),
         clock=make_clock(),
     )
@@ -158,3 +174,30 @@ def test_ingest_logs_when_a_document_yields_no_text(caplog: pytest.LogCaptureFix
     assert "blank.pdf: no text extracted, nothing to index" in [
         record.getMessage() for record in caplog.records
     ]
+
+
+def test_ingest_embeds_every_unit_and_stores_them_grouped_per_chunk():
+    store = FakeVectorStore()
+    two_block_chunker = lambda document, pages: [
+        Chunk(
+            id=chunk_id(document.id, 0),
+            document_id=document.id,
+            filename=document.filename,
+            text="first block\n\nsecond block\n\nthird block",
+            page=1,
+            section=None,
+            index_in_doc=0,
+        )
+    ]
+    service = IngestionPipelineService(
+        extractor=FakeExtractor(),
+        chunker=two_block_chunker,
+        embedder=FakeEmbedder(),
+        unit_splitter=fake_unit_splitter,
+        store=store,
+    )
+
+    service.ingest([("one.pdf", b"%PDF fake one")])
+
+    assert len(store.vectors) == 1
+    assert len(store.vectors[0]) == 3

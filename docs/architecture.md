@@ -38,15 +38,21 @@ src/
     models      entities — Document, Chunk, RetrievedChunk, Answer —
                 plus the LLM vocabulary: Message, ToolCall, AgentReply, Completion
     ports       Protocols — PdfExtractor, EmbeddingModel, VectorStore,
-                Retriever, LLM
+                Retriever, LLM — plus the callable aliases Chunker
+                and UnitSplitter
     services    domain services — AgentService, IngestionPipelineService —
                 plus prompts: the deliberate prompt artifacts (Decision 0008)
-  ingestion/    adapters for extraction (+ chunking as plain functions,
-                later ingest-time augmentation)
+  ingestion/    adapters for extraction — pymupdf4llm between a font-repair
+                pre-pass and a page-cleaning post-pass — plus two plain
+                functions: the page chunker (one chunk per page) and the
+                unit splitter (the paragraphs and table rows the embedder
+                sees, stored as one multivector per chunk — Decisions
+                0011 and 0012)
   retrieval/    adapters for embeddings and the vector store (Qdrant),
                 plus the Retriever strategies (vector, hybrid, decorators)
-  llm/          adapters for LLM providers (PydanticAI direct today,
-                swappable — Decision 0008)
+  llm/          adapters for LLM providers (PydanticAI direct, with a
+                FallbackModel wired at the composition root — Decisions
+                0008 and 0012)
   api/          FastAPI edge: thin routes + the composition root
   evaluation/   the eval harness: golden-dataset loader, matching,
                 metrics, report, CLI runner (data lives in /evals)
@@ -55,7 +61,7 @@ src/
 Two request flows, one shared domain:
 
 - `POST /documents` → route → **IngestionPipelineService** → extract
-  (PdfExtractor) → chunk → embed (EmbeddingModel) → index (VectorStore).
+  (PdfExtractor) → chunk → split into embedding units → embed (EmbeddingModel) → index (VectorStore).
 - `POST /question` → route → **AgentService** → deterministic seed
   retrieval (Retriever) → bounded tool loop against the LLM port, which
   exposes a `query_knowledge` tool calling the **same Retriever
@@ -103,8 +109,8 @@ reindex — its eval must cover both sides.
 - **Seam discipline** — a port exists only where implementations really
   vary: **a second adapter, existing or concretely required — test fakes
   count.** Today that means extraction, embeddings/vector store,
-  retrieval strategy, and LLM. Chunking is plain functions until evals
-  demand competing strategies. Don't pre-abstract; a hypothetical seam is
+  retrieval strategy, and LLM. Chunking and unit splitting are plain
+  functions until evals demand competing strategies. Don't pre-abstract; a hypothetical seam is
   interface tax with no leverage.
 
 # Rules

@@ -3,7 +3,7 @@ import logging
 import openai
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic_ai.exceptions import ModelAPIError
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError
 
 from api.routes.documents import router as documents_router
 from api.routes.question import router as question_router
@@ -29,6 +29,15 @@ def llm_error_handler(request: Request, exc: ModelAPIError) -> JSONResponse:
     return JSONResponse(
         status_code=502,
         content={"detail": f"LLM provider error: {exc}"},
+    )
+
+
+@app.exception_handler(FallbackExceptionGroup)
+def llm_fallback_error_handler(request: Request, exc: FallbackExceptionGroup) -> JSONResponse:
+    causes = "; ".join(str(cause) for cause in exc.exceptions)
+    return JSONResponse(
+        status_code=502,
+        content={"detail": f"every LLM provider failed: {causes}"},
     )
 
 

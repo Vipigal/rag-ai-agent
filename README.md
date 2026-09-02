@@ -12,17 +12,17 @@ explains how it is organized.
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
 ![Qdrant](https://img.shields.io/badge/Qdrant-1.19-DC244C)
-![OpenAI](https://img.shields.io/badge/LLM-OpenAI%20via%20PydanticAI-412991?logo=openai&logoColor=white)
+![Models](https://img.shields.io/badge/models-OpenAI%20%2B%20Gemini%20via%20PydanticAI-412991?logo=openai&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/run-docker%20compose-2496ED?logo=docker&logoColor=white)
 ![TDD + pyright](https://img.shields.io/badge/quality-TDD%20%C2%B7%20pyright%20standard-brightgreen)
 
 ## Quickstart
 
-You need Docker and an OpenAI API key. Nothing else.
+You need Docker, an OpenAI API key and a Gemini API key. Nothing else.
 
 ```bash
 git clone <this repo> && cd rag-agent
-cp .env.example .env        # put your key in OPENAI_API_KEY
+cp .env.example .env        # put your keys in OPENAI_API_KEY and GEMINI_API_KEY
 make up                     # builds the image, starts Qdrant + API in the foreground
 ```
 
@@ -113,8 +113,8 @@ calls plus retrieval.
 flowchart LR
   subgraph ingest["POST /documents — write path"]
     P[PDF bytes] --> X["PdfExtractor<br/>pymupdf4llm, page markdown<br/>+ TOC breadcrumbs"]
-    X --> C["chunker<br/>structure-aware,<br/>within each page"]
-    C --> E["EmbeddingModel<br/>text-embedding-3-small"]
+    X --> C["chunker<br/>one chunk per page,<br/>embedded as its blocks"]
+    C --> E["EmbeddingModel<br/>pydantic-ai Embedder:<br/>OpenAI or Google"]
     E --> Q[("Qdrant<br/>one point per chunk<br/>payload = provenance")]
   end
   subgraph ask["POST /question — read path"]
@@ -188,6 +188,12 @@ reach here.
 | Iteration | Date | Results | recall@5 | hit_rate@5 | MRR@5 |
 | --------- | ---- | ------- | -------: | ---------: | ----: |
 | **Baseline** — pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json) | 0.65 | 0.66 | 0.60 |
+| **Font repair** — fonts lacking a ToUnicode map get one from Arial's glyph order before extraction; CESTARI stops indexing `�` (no OCR) | 2026-09-02 | [`20260902-035239-font-repair.json`](evals/results/20260902-035239-font-repair.json) | 0.78 | 0.80 | 0.70 |
+| **Page cleaning** — running headers, page numbers, dot leaders and picture-text markers stripped | 2026-09-02 | [`20260902-035640-page-cleanup.json`](evals/results/20260902-035640-page-cleanup.json) | 0.80 | 0.81 | 0.71 |
+| **Structured chunks** — markdown blocks packed to ~1200 chars, sentences and tables never split, sections from headings where the PDF has no outline | 2026-09-02 | [`20260902-041707-structured-chunks.json`](evals/results/20260902-041707-structured-chunks.json) | 0.79 | 0.81 | 0.71 |
+| **Contextualized embeddings** — document, section and heading prefixed to the text the embedder sees; stored chunk unchanged | 2026-09-02 | [`20260902-041913-embed-context.json`](evals/results/20260902-041913-embed-context.json) | 0.81 | 0.83 | 0.76 |
+| **Page chunks, small units** — one chunk per page; its paragraphs and table rows are embedded as separate vectors on the same Qdrant point (MaxSim), so a specific value is found and the whole page is read | 2026-09-02 | [`20260902-045635-page-multivector.json`](evals/results/20260902-045635-page-multivector.json) | 0.86 | 0.86 | 0.79 |
+| **Multilingual embedder** — `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json) | **0.95** | **0.95** | **0.91** |
 
 Gates are computed over the 83 gated cases (93 minus 8 unanswerable
 controls and 2 image-only diagnostics). Answer-layer gates (fact recall,
@@ -214,13 +220,15 @@ and will join this table.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Only the first variable is required.
+Copy `.env.example` to `.env`. Only the two API keys are required.
 
 | Variable                  | Default                  | What it does                                                                      |
 | ------------------------- | ------------------------ | --------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`          | —                        | Used for embeddings and the LLM. **Required.**                                    |
+| `OPENAI_API_KEY`          | —                        | The primary LLM (`gpt-5-mini`) and the OpenAI embedding models. **Required.**     |
+| `GEMINI_API_KEY`          | —                        | Embeddings (`gemini-embedding-001`) and the fallback LLM. **Required.**           |
 | `LLM_MODEL`               | `openai:gpt-5-mini`      | Any PydanticAI model string; `openai:` is the Responses API, `openai-chat:` Chat Completions. |
-| `EMBEDDING_MODEL`         | `text-embedding-3-small` | `text-embedding-3-small` or `text-embedding-3-large` (changing it requires re-indexing). |
+| `LLM_FALLBACK_MODEL`      | `google:gemini-3.5-flash` | Tried when the primary model fails with a provider error (4xx, 5xx, connection). Blank disables the fallback. |
+| `EMBEDDING_MODEL`         | `google:gemini-embedding-001` | `google:gemini-embedding-001` (the measured best, see the scoreboard), `openai:text-embedding-3-small` or `openai:text-embedding-3-large`; changing the model requires re-indexing (delete the collection, the store refuses a mismatched one). |
 | `RETRIEVAL_K`             | `5`                      | Chunks per retrieval (seed and tool calls).                                       |
 | `AGENT_MAX_TOOL_ROUNDS`   | `3`                      | Cap on `query_knowledge` rounds per question; `0` disables the tool.              |
 | `QUERY_KNOWLEDGE_ENABLED` | `true`                   | Offer the retrieval tool to the model at all.                                     |
@@ -228,9 +236,10 @@ Copy `.env.example` to `.env`. Only the first variable is required.
 | `QDRANT_COLLECTION`       | `chunks`                 | Production collection.                                                            |
 | `EVAL_QDRANT_COLLECTION`  | `eval_chunks`            | Separate collection the eval harness indexes and reads.                           |
 
-Other providers are one extra and a model string away — the LLM adapter is
-PydanticAI's direct API and its fallback-model path is open; only the
-OpenAI extra is installed today.
+The LLM has a provider fallback: when the primary model fails with a
+provider error, the same request is retried on `LLM_FALLBACK_MODEL`
+(PydanticAI's `FallbackModel`); if every model fails the API answers 502
+naming each model's error. The OpenAI and Google extras are both installed.
 
 ## Documentation: a wiki for the agents that built this
 
@@ -274,5 +283,5 @@ Some of the documentation worth a look:
 - [x] Environment variables and API keys — [Configuration](#configuration)
 - [x] Optional: Dockerized environment and Makefile
 - [x] Optional: logging — per-file ingestion progress and request logs in the compose output
-- [x] Optional: multiple LLM providers — PydanticAI adapter with the fallback path open
+- [x] Optional: multiple LLM providers and fallback — `gpt-5-mini` falls back to `gemini-3.5-flash` automatically (PydanticAI `FallbackModel`); embeddings are Gemini
 - [ ] Optional: frontend — not built; the OpenAPI UI at `/docs` is the interactive surface

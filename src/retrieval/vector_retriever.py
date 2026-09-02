@@ -8,5 +8,5 @@ class VectorRetriever:
         self._store = store
 
     def retrieve(self, query: str, k: int) -> list[RetrievedChunk]:
-        vector = self._embedder.embed([query])[0]
+        vector = self._embedder.embed_query(query)
         return self._store.search(vector, k)

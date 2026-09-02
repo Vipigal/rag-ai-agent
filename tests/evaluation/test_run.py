@@ -52,7 +52,7 @@ class FakeStore:
     def count(self) -> int:
         return self.points
 
-    def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+    def add(self, chunks: list[Chunk], vectors: list[list[list[float]]]) -> None:
         raise NotImplementedError
 
     def search(self, vector: list[float], k: int) -> list[RetrievedChunk]:

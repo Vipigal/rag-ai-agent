@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 
 from domain.models import Document, IngestionResult
-from domain.ports import Chunker, EmbeddingModel, PdfExtractor, VectorStore
+from domain.ports import Chunker, EmbeddingModel, PdfExtractor, UnitSplitter, VectorStore
 
 log = logging.getLogger(__name__)
 
@@ -16,12 +16,14 @@ class IngestionPipelineService:
         self,
         extractor: PdfExtractor,
         chunker: Chunker,
+        unit_splitter: UnitSplitter,
         embedder: EmbeddingModel,
         store: VectorStore,
         clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         self._extractor = extractor
         self._chunker = chunker
+        self._unit_splitter = unit_splitter
         self._embedder = embedder
         self._store = store
         self._clock = clock
@@ -56,12 +58,25 @@ class IngestionPipelineService:
         if not chunks:
             log.info("%s: no text extracted, nothing to index", filename)
             return 0
-        vectors = self._embedder.embed([chunk.text for chunk in chunks])
-        self._store.add(chunks, vectors)
+        units = [self._unit_splitter(chunk) for chunk in chunks]
+        vectors = self._embedder.embed_documents(
+            [unit for chunk_units in units for unit in chunk_units]
+        )
+        self._store.add(chunks, _regroup(vectors, [len(chunk_units) for chunk_units in units]))
         log.info(
-            "%s: %d chunk(s) embedded and indexed in %.1fs",
+            "%s: %d chunk(s) as %d unit(s) embedded and indexed in %.1fs",
             filename,
             len(chunks),
+            len(vectors),
             self._clock() - extracted_at,
         )
         return len(chunks)
+
+
+def _regroup(vectors: list[list[float]], sizes: list[int]) -> list[list[list[float]]]:
+    grouped: list[list[list[float]]] = []
+    offset = 0
+    for size in sizes:
+        grouped.append(vectors[offset : offset + size])
+        offset += size
+    return grouped

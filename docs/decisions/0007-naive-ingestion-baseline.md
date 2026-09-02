@@ -4,7 +4,7 @@ title: 0007 — Naive ingestion baseline: what it is and what it defers
 description: The first POST /documents pipeline is deliberately naive — pymupdf4llm without OCR, fixed 1000/200 per-page chunking, OpenAI text-embedding-3-small, sync all-or-nothing route — with deterministic content-addressed IDs for idempotent re-ingestion, kind+metadata extension points on the persisted chunk, and no relational database.
 tags: [ingestion, baseline, chunking, embeddings, idempotency, qdrant]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T22:50:49Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T04:20:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:22:00Z }
 sources:
   - id: ingestion-spec
@@ -14,6 +14,15 @@ sources:
     resource: /research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
 ---
+
+> **Amended by [Decision 0011](/docs/decisions/0011-ingestion-font-repair-and-structured-chunking.md)
+> (2026-09-02).** The naive extraction and the fixed 1000/200 chunker are
+> superseded: fonts lacking a ToUnicode map are repaired before extraction
+> (no OCR), page furniture is stripped, and — per [Decision 0012](/docs/decisions/0012-page-chunks-unit-vectors-and-providers.md)
+> — the chunk is the page with one vector per paragraph or table row,
+> embedded by `gemini-embedding-001`. Deterministic IDs, the sync route,
+> the `kind`/`metadata` extension points and "no relational database"
+> stand.
 
 # Context
 

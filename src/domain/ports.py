@@ -9,11 +9,13 @@ class PdfExtractor(Protocol):
 
 
 class EmbeddingModel(Protocol):
-    def embed(self, texts: list[str]) -> list[list[float]]: ...
+    def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
+
+    def embed_query(self, text: str) -> list[float]: ...
 
 
 class VectorStore(Protocol):
-    def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None: ...
+    def add(self, chunks: list[Chunk], vectors: list[list[list[float]]]) -> None: ...
 
     def search(self, vector: list[float], k: int) -> list[RetrievedChunk]: ...
 
@@ -32,3 +34,5 @@ class LLM(Protocol):
 
 
 Chunker = Callable[[Document, list[Page]], list[Chunk]]
+
+UnitSplitter = Callable[[Chunk], list[str]]

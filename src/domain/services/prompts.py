@@ -1,7 +1,7 @@
 from string import Template
 from xml.sax.saxutils import quoteattr
 
-from domain.models import RetrievedChunk
+from domain.models import SECTION_SEPARATOR, RetrievedChunk
 
 SYSTEM_PROMPT = """You answer questions using chunks retrieved from the user's uploaded PDF documents.
 
@@ -30,7 +30,6 @@ CHUNK_TEMPLATE = Template(
 
 SECTION_TEMPLATE = Template("  <section>$title</section>\n")
 
-SECTION_SEPARATOR = " > "
 
 
 def render_context(retrieved: list[RetrievedChunk], tool_available: bool) -> str:

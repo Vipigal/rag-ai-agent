@@ -2,7 +2,7 @@ import httpx2
 import openai
 import pytest
 from fastapi.testclient import TestClient
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
 
 from api.composition import get_agent_service
 from api.main import app
@@ -84,6 +84,27 @@ def test_llm_provider_failure_maps_to_502(service):
 
     assert response.status_code == 502
     assert "gpt-5-mini" in response.json()["detail"]
+
+
+def test_every_llm_provider_failing_maps_to_502_naming_each_model(service):
+    def explode(question: str) -> Answer:
+        raise FallbackExceptionGroup(
+            "All models from FallbackModel failed",
+            [
+                ModelHTTPError(status_code=503, model_name="gpt-5-mini", body={"error": "down"}),
+                ModelHTTPError(status_code=429, model_name="gemini-3.5-flash", body={"error": "quota"}),
+            ],
+        )
+
+    service.answer = explode
+
+    response = TestClient(app, raise_server_exceptions=False).post(
+        "/question", json={"question": QUESTION}
+    )
+
+    assert response.status_code == 502
+    assert "gpt-5-mini" in response.json()["detail"]
+    assert "gemini-3.5-flash" in response.json()["detail"]
 
 
 def test_openai_connection_failure_on_the_question_path_maps_to_502(service):

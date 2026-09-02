@@ -8,9 +8,12 @@ class FakeEmbedder:
     def __init__(self) -> None:
         self.embedded: list[list[str]] = []
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        self.embedded.append(texts)
-        return [QUERY_VECTOR for _ in texts]
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    def embed_query(self, text: str) -> list[float]:
+        self.embedded.append([text])
+        return QUERY_VECTOR
 
 
 class FakeStore:
@@ -22,7 +25,7 @@ class FakeStore:
         self.searches.append((vector, k))
         return self._results[:k]
 
-    def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+    def add(self, chunks: list[Chunk], vectors: list[list[list[float]]]) -> None:
         raise NotImplementedError
 
     def count(self) -> int:

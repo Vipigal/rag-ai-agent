@@ -25,7 +25,7 @@ check-venv:
 	@test -x .venv/bin/python || { echo "No .venv found. Run: make install"; exit 1; }
 
 check-env:
-	@test -f .env || { echo "No .env found. Run: cp .env.example .env   then set OPENAI_API_KEY in it"; exit 1; }
+	@test -f .env || { echo "No .env found. Run: cp .env.example .env   then set OPENAI_API_KEY and GEMINI_API_KEY in it"; exit 1; }
 
 up: check-env
 	@docker compose up --build

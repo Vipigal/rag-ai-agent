@@ -16,8 +16,11 @@ POWER_CHUNK_ID = chunk_id("doc-a", 1)
 
 
 class KeywordEmbedder:
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [self._vector(text.lower()) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._vector(text.lower())
 
     @staticmethod
     def _vector(text: str) -> list[float]:
@@ -55,7 +58,7 @@ def make_service(llm: CitingLLM) -> AgentService:
         make_chunk("doc-a", "w22-manual.pdf", GREASE_TEXT, page=42, index=0),
         make_chunk("doc-a", "w22-manual.pdf", POWER_TEXT, page=7, index=1),
     ]
-    store.add(chunks, embedder.embed([chunk.text for chunk in chunks]))
+    store.add(chunks, [[vector] for vector in embedder.embed_documents([chunk.text for chunk in chunks])])
     return AgentService(
         retriever=VectorRetriever(embedder, store),
         llm=llm,
