@@ -2,6 +2,7 @@ fastapi==0.141.1
 uvicorn[standard]==0.52.4
 pymupdf4llm==1.28.2
 openai==3.6.0
+pydantic-ai-slim[openai]==2.37.0
 qdrant-client==1.19.0
 python-multipart==0.0.32
 pyyaml==6.0.3

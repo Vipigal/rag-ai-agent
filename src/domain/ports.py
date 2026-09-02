@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from domain.models import Chunk, Document, Page, RetrievedChunk
+from domain.models import Chunk, Completion, Document, Message, Page, RetrievedChunk
 
 
 class PdfExtractor(Protocol):
@@ -22,6 +22,13 @@ class VectorStore(Protocol):
 
 class Retriever(Protocol):
     def retrieve(self, query: str, k: int) -> list[RetrievedChunk]: ...
+
+
+Tool = Callable[..., str]
+
+
+class LLM(Protocol):
+    def complete(self, messages: list[Message], tools: list[Tool]) -> Completion: ...
 
 
 Chunker = Callable[[Document, list[Page]], list[Chunk]]

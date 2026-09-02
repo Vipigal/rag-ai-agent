@@ -43,3 +43,37 @@ class RetrievedChunk:
     chunk: Chunk
     score: float
     retrieval_source: str = "seed"
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    id: str
+    name: str
+    arguments: dict[str, object]
+
+
+@dataclass(frozen=True)
+class Message:
+    role: str
+    content: str
+    tool_calls: tuple[ToolCall, ...] = ()
+    tool_call_id: str | None = None
+
+
+@dataclass(frozen=True)
+class AgentReply:
+    answer: str
+    citations: list[str]
+    has_answer: bool
+
+
+@dataclass(frozen=True)
+class Completion:
+    message: Message
+    reply: AgentReply | None
+
+
+@dataclass(frozen=True)
+class Answer:
+    text: str
+    references: list[RetrievedChunk]

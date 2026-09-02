@@ -76,4 +76,4 @@ def test_embedding_provider_failure_maps_to_502(service):
     )
 
     assert response.status_code == 502
-    assert "embedding" in response.json()["detail"].lower()
+    assert "provider" in response.json()["detail"].lower()

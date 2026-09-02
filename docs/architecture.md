@@ -4,7 +4,7 @@ title: System Architecture — Ports & Adapters Lite
 description: The operating map of the codebase — the hexagonal-lite structure, the concepts behind it (ports, adapters, domain services, composition root), the rules every implementation must follow, and how to extend the system.
 tags: [architecture, hexagonal, ports-and-adapters, ddd, protocols]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-01T16:26:51Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:30:26Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
 sources:
   - id: cosmic-python
@@ -36,10 +36,11 @@ operates through it.
 src/
   domain/       the hexagon: pure Python, zero framework imports
     models      entities — Document, Chunk, RetrievedChunk, Answer —
-                plus the LLM vocabulary: Message, ToolSpec, ToolCall
+                plus the LLM vocabulary: Message, ToolCall, AgentReply, Completion
     ports       Protocols — PdfExtractor, EmbeddingModel, VectorStore,
                 Retriever, LLM
-    services    domain services — AgentService, IngestionPipelineService
+    services    domain services — AgentService, IngestionPipelineService —
+                plus prompts: the deliberate prompt artifacts (Decision 0008)
   ingestion/    adapters for extraction (+ chunking as plain functions,
                 later ingest-time augmentation)
   retrieval/    adapters for embeddings and the vector store (Qdrant),
@@ -129,8 +130,9 @@ reindex — its eval must cover both sides.
    wiring makes it impossible.
 9. `AgentService` never touches `VectorStore` directly — all reading goes
    through `Retriever`. The `LLM` port speaks the domain's
-   `Message`/`ToolSpec`/`ToolCall` vocabulary, never provider types; the
-   tool loop (iteration-capped) lives in `AgentService`.
+   `Message`/`ToolCall`/`AgentReply` vocabulary — tools are plain Python
+   functions, the reply a structured output (Decision 0009) — never
+   provider types; the tool loop (iteration-capped) lives in `AgentService`.
 10. **The architecture yields to the evals.** If a seam obstructs a
     retrieval experiment, reshape the seam and update this concept plus a
     decision record — never work around it in silence.

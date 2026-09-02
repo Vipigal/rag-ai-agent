@@ -11,7 +11,7 @@ help:
 	@echo "make eval-fresh label=<name>   drop the eval collection, re-ingest and run"
 	@echo "make test                      run the pytest suite"
 	@echo "make typecheck                 run pyright (standard mode)"
-	@echo "make up                        start api + qdrant via docker compose"
+	@echo "make up                        build and start api + qdrant via docker compose"
 
 eval:
 	@set -a; . ./.env; set +a; PYTHONPATH=src .venv/bin/python -m evaluation.run --label $(label) --k $(k) --threshold $(threshold) $(args)
@@ -27,4 +27,4 @@ typecheck:
 	@.venv/bin/pyright
 
 up:
-	@docker compose up -d
+	@docker compose up -d --build

@@ -9,6 +9,7 @@ knowledge is co-located with the module's code (see the
 - [Development Workflow](development-workflow.md) - Testing-first and eval-first: how modules get built (TDD) and how system accuracy gets measured (evals).
 - [Authoring Guide](authoring-guide.md) - How to add knowledge to this bundle: co-location with code, what deserves documentation, and the OKF conventions.
 - [System Architecture — Ports & Adapters Lite](architecture.md) - The operating map of the codebase — the hexagonal-lite structure, the concepts behind it (ports, adapters, domain services, composition root), the rules every implementation must follow, and how to extend the system.
+- [Project Glossary](glossary.md) - The ubiquitous language of the RAG question-answering system — one word per concept across code, bundle and evals, with the words to avoid.
 
 # Decisions
 

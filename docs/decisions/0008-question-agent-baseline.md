@@ -4,7 +4,7 @@ title: 0008 — Question agent baseline: PydanticAI direct, LLM-cited references
 description: The LLM port's first adapter uses pydantic-ai-slim's direct API (caller-owned single-call, FallbackModel path open); references are the chunks the LLM actually cites via an [i] protocol with a NO_ANSWER refusal sentinel and seed fallback; the eval harness consumes the domain in-process; config knobs with defaults (k=5, 3 tool rounds, tool toggle on).
 tags: [agent, llm, pydantic-ai, citations, references, evals, config]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-01T19:04:37Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:18:30Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:22:00Z }
 sources:
   - id: llm-evidence
@@ -25,6 +25,12 @@ sources:
 ---
 
 # Context
+
+> **Amended by [Decision 0009](/docs/decisions/0009-structured-reply-function-tools.md)**
+> (2026-09-02): the `[i]` citation markers, the `NO_ANSWER` sentinel and the
+> `ToolSpec` vocabulary below are superseded — the reply is a structured
+> output citing chunk ids, and tools are Python functions. Everything else in
+> this record stands.
 
 [Decision 0005](/docs/decisions/0005-retrieval-architecture.md) fixed the
 macro shape of answering — seed retrieval plus a bounded `query_knowledge`
