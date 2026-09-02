@@ -7,7 +7,7 @@ every retrieval and prompt change is measured against a hand-authored
 golden dataset before it is kept. From day one the repo has carried a
 **wiki-style knowledge base for the AI coding agents** that helped develop
 it — the [documentation section](#documentation-a-wiki-for-the-agents-that-built-this)
-explains how to read it in five minutes.
+explains how it is organized.
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
@@ -26,26 +26,26 @@ cp .env.example .env        # put your key in OPENAI_API_KEY
 make up                     # builds the image, starts Qdrant + API in the foreground
 ```
 
-In a second terminal, index the four motor manuals shipped in
-`case_files/` (WEG and Baldor, Portuguese and English) and ask the
-challenge's own example question:
+With the stack running, send any PDF to `POST /documents` — repeat `-F`
+to upload several at once. The repo ships four real motor manuals in
+`case_files/` (WEG and Baldor, Portuguese and English) if you want
+something to try:
 
 ```bash
-curl -s -F "files=@case_files/LB5001.pdf" \
-        -F "files=@case_files/MN414_0224.pdf" \
-        -F "files=@case_files/WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf" \
-        -F "files=@case_files/WEG-motores-eletricos-guia-de-especificacao-50032749-brochure-portuguese-web.pdf" \
-        http://localhost:8000/documents
-# {"message":"Documents processed successfully","documents_indexed":4,"total_chunks":570}
+curl -s -F "files=@case_files/LB5001.pdf" http://localhost:8000/documents
+```
 
+The response reports how many documents and chunks were indexed, and the
+`make up` terminal logs each file's progress while it is ingested. Then
+ask:
+
+```bash
 curl -s -X POST http://localhost:8000/question \
         -H 'Content-Type: application/json' \
         -d '{"question": "What is the power consumption of the motor?"}'
 ```
 
-Indexing the four PDFs takes about a minute; the `make up` terminal shows
-one log line per file and stage while it runs. Interactive OpenAPI docs
-live at <http://localhost:8000/docs>.
+Interactive OpenAPI docs live at <http://localhost:8000/docs>.
 
 ## The API
 
@@ -63,9 +63,9 @@ the index never accumulates duplicates.
 
 ### Example requests and responses
 
-Real outputs from the running stack (`openai:gpt-5-mini`, the 570-chunk
-corpus). References are shown truncated; the API returns the full chunk
-text.
+Real outputs from the running stack (`openai:gpt-5-mini`, the four
+manuals from `case_files/` indexed). References are shown truncated; the
+API returns the full chunk text.
 
 **The challenge's example question** — answered from the WEG guide's
 conceptual section, in the question's language:
@@ -113,7 +113,7 @@ calls plus retrieval.
 flowchart LR
   subgraph ingest["POST /documents — write path"]
     P[PDF bytes] --> X["PdfExtractor<br/>pymupdf4llm, page markdown<br/>+ TOC breadcrumbs"]
-    X --> C["chunker<br/>1000 chars / 200 overlap<br/>within each page"]
+    X --> C["chunker<br/>structure-aware,<br/>within each page"]
     C --> E["EmbeddingModel<br/>text-embedding-3-small"]
     E --> Q[("Qdrant<br/>one point per chunk<br/>payload = provenance")]
   end
@@ -127,41 +127,38 @@ flowchart LR
   R --> Q
 ```
 
-The codebase is a **ports & adapters "lite"**
-([architecture](docs/architecture.md), [Decision 0004](docs/decisions/0004-ports-and-adapters-lite.md)):
-a framework-free domain (`src/domain`: dataclass entities, `typing.Protocol`
-ports, two domain services) surrounded by adapters per pipeline stage, wired
-in one composition root at the API edge. The point is cheap experiments:
-swapping the PDF extractor, the embedder, the retrieval strategy or the LLM
-provider is a one-line change, and the evals decide whether it stays.
+The codebase is a **ports & adapters "lite"**: a framework-free domain
+(`src/domain`: dataclass entities, `typing.Protocol` ports, two domain
+services) surrounded by adapters per pipeline stage, wired in one
+composition root at the API edge. The point is cheap experiments: swapping
+the PDF extractor, the embedder, the retrieval strategy or the LLM provider
+is a one-line change, and the evals decide whether it stays.
 
-Answering is **dual-path** ([Decision 0005](docs/decisions/0005-retrieval-architecture.md)):
-a deterministic seed retrieval puts the top-k chunks in front of the model
-as an XML-rendered context, and the model may call a `query_knowledge`
-tool (at most 3 rounds) against the same retriever when the seed is not
-enough. The final turn is a **provider-enforced structured reply** — answer
-text, the ids of the chunks it actually cites, and a `has_answer` flag
-([Decision 0009](docs/decisions/0009-structured-reply-function-tools.md)) —
-so `references` carries exactly what grounded the answer, never
-everything that was retrieved. The prompt is a deliberate, reviewed
-artifact in `src/domain/services/prompts.py`, not a string buried in a
-route.
+Answering is **dual-path**: a deterministic seed retrieval puts the top-k
+chunks in front of the model as an XML-rendered context, and the model may
+call a `query_knowledge` tool (at most 3 rounds) against the same retriever
+when the seed is not enough. The final turn is a **provider-enforced
+structured reply** — answer text, the ids of the chunks it actually cites,
+and a `has_answer` flag — so `references` carries exactly what grounded the
+answer, never everything that was retrieved. The prompt is a deliberate,
+reviewed artifact in `src/domain/services/prompts.py`, not a string buried
+in a route.
 
 ```
 src/domain/       entities, ports (Protocols), AgentService, IngestionPipelineService, prompts — pure Python
-src/ingestion/    pymupdf4llm extractor, fixed-size chunker
+src/ingestion/    pymupdf4llm extractor, chunker
 src/retrieval/    OpenAI embedder, Qdrant store, VectorRetriever
 src/llm/          PydanticAiLLM adapter (structured output, function-derived tools)
 src/api/          FastAPI routes + composition root
 src/evaluation/   the eval harness (loader, matching, metrics, report, CLI)
 evals/            golden dataset (93 cases) and committed results
-tests/            115 tests — domain services against fakes, adapters, route and seam integration
+tests/            domain services against fakes, adapters, routes and seam integration
 docs/ specs/ research/   the knowledge bundle (see below)
 ```
 
 ## Eval-first
 
-Accuracy is measured, not assumed ([development workflow](docs/development-workflow.md)).
+Accuracy is measured, not assumed.
 
 - **Golden dataset** — 93 hand-authored question → ideal-answer cases over
   the four manuals ([overview](evals/golden/golden-dataset.md)): operator
@@ -169,10 +166,10 @@ Accuracy is measured, not assumed ([development workflow](docs/development-workf
   (English manuals asked in Portuguese and vice-versa), and 8 unanswerable
   controls. Ground truth is verbatim excerpts plus page, never chunk ids,
   so it survives any change in chunking.
-- **Metrics** ([Decision 0006](docs/decisions/0006-eval-metrics-and-golden-dataset.md))
-  — deterministic **gates** decide experiments: recall@5, hit_rate@5,
-  MRR@5. Diagnostics (precision@5, per-slice breakdowns by document,
-  language, persona and category) explain the numbers but never gate.
+- **Metrics** — deterministic **gates** decide experiments: recall@5,
+  hit_rate@5, MRR@5. Diagnostics (precision@5, per-slice breakdowns by
+  document, language, persona and category) explain the numbers but never
+  gate.
 - **The rule** — any change to chunking, embedding, retrieval or prompting
   ships with a before/after run committed to `evals/results/`.
 
@@ -190,30 +187,23 @@ reach here.
 
 | Iteration | Date | Results | recall@5 | hit_rate@5 | MRR@5 |
 | --------- | ---- | ------- | -------: | ---------: | ----: |
-| **Baseline** — pymupdf4llm without OCR, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json) | 0.65 | 0.66 | 0.60 |
+| **Baseline** — pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json) | 0.65 | 0.66 | 0.60 |
 
 Gates are computed over the 83 gated cases (93 minus 8 unanswerable
-controls and 2 image-only diagnostics). The baseline's two known failure
-axes, both deliberately indexed so the first improvements are measurable:
-
-1. **A broken PDF text layer.** The WEG-CESTARI manual has a partially
-   corrupted font map; its middle pages extract as replacement characters.
-   An OCR quality gate is the first planned experiment.
-2. **Cross-lingual retrieval.** Portuguese questions against the English
-   manuals miss far more than same-language ones; hybrid (BM25 + vector)
-   or multilingual embeddings are the candidates, with the
-   [evidence](research/retrieval-strategy-evidence.md) already gathered.
-
-Answer-layer gates (fact recall, citation precision/recall, refusal rate)
-are the next harness increment and will join this table.
+controls and 2 image-only diagnostics). Answer-layer gates (fact recall,
+citation precision/recall, refusal rate) are the next harness increment
+and will join this table.
 
 ## Engineering practices
 
-- **Testing-first.** Every module and every seam between modules was
-  built red-green-refactor: domain services against fakes of their ports,
-  adapters on their own, routes with dependency overrides, seams on an
-  in-memory Qdrant. External services are faked in tests; their real
-  behavior is the evals' job. `make test` — 115 tests in about 3 s.
+- **TDD for the code itself.** Distinct from the evals above, which
+  measure whether the system answers well, the test suite checks that
+  each module does what it was designed to do. Every module and every
+  seam between modules was written red-green-refactor: domain services
+  against fakes of their ports, adapters on their own, routes with
+  dependency overrides, seams on an in-memory Qdrant. External services
+  are faked here; their real behavior is the evals' job. `make test` runs
+  the suite in seconds.
 - **Typed.** `make typecheck` — pyright in `standard` mode, zero errors,
   no blanket ignores.
 - **Comment-free code, documented decisions.** Rationale lives in the
@@ -239,8 +229,7 @@ Copy `.env.example` to `.env`. Only the first variable is required.
 | `EVAL_QDRANT_COLLECTION`  | `eval_chunks`            | Separate collection the eval harness indexes and reads.                           |
 
 Other providers are one extra and a model string away — the LLM adapter is
-PydanticAI's direct API and its `FallbackModel` path is open
-([Decision 0008](docs/decisions/0008-question-agent-baseline.md)); only the
+PydanticAI's direct API and its fallback-model path is open; only the
 OpenAI extra is installed today.
 
 ## Documentation: a wiki for the agents that built this
@@ -259,34 +248,22 @@ The bundle is curated: the owner is its editor, approves every new
 concept before it is written, and stamps what he has reviewed
 (`verified`). Agents propose, humans decide.
 
-**A five-minute reading path for a human evaluator:**
+Some of the documentation worth a look:
 
-1. [`docs/golden-rules.md`](docs/golden-rules.md) — the challenge's six
-   criteria, adopted as the north star every tradeoff is resolved against.
-2. [`docs/architecture.md`](docs/architecture.md) — the operating map:
-   shape, rules, how to extend.
-3. [`docs/decisions/`](docs/decisions/index.md) — ten decision records,
-   each with context, alternatives rejected and consequences. Start with
-   [0004](docs/decisions/0004-ports-and-adapters-lite.md) (architecture),
-   [0005](docs/decisions/0005-retrieval-architecture.md) (retrieval and
-   the dual-path agent), [0006](docs/decisions/0006-eval-metrics-and-golden-dataset.md)
-   (eval metrics), [0009](docs/decisions/0009-structured-reply-function-tools.md)
-   (structured replies) and [0010](docs/decisions/0010-examiner-developer-ux.md)
-   (developer UX).
-4. [`log.md`](log.md) — the bundle's changelog, newest first: the story of
-   the project in one page.
-
-## What's next
-
-Eval-gated, in this order:
-
-- An **OCR quality gate** in ingestion, measured on the CESTARI canary.
-- **Cross-lingual retrieval** — hybrid BM25 + vector search or a
-  multilingual embedding model, measured on the `language` slice.
-- **Answer-layer evals** — fact recall, citation precision/recall and
-  refusal rate over the golden dataset, so prompt changes are gated too.
-- **Per-request observability** — latency attributed to retrieval, tool
-  rounds and structured output.
+- [`docs/golden-rules.md`](docs/golden-rules.md) — the challenge's six
+  criteria, adopted as the north star every tradeoff is resolved against.
+- [`docs/architecture.md`](docs/architecture.md) — the operating map of
+  the codebase: shape, rules, how to extend it.
+- [`docs/decisions/`](docs/decisions/index.md) — the decision records,
+  each with context, alternatives rejected and consequences.
+- [`specs/`](specs/index.md) and [`research/`](research/index.md) — the
+  designs each subsystem was built from, and the cited evidence behind
+  them.
+- Module notes next to the code, such as
+  [`src/ingestion/ingestion.md`](src/ingestion/ingestion.md) and
+  [`src/evaluation/evaluation.md`](src/evaluation/evaluation.md).
+- [`log.md`](log.md) — the bundle's changelog, newest first: the story of
+  the project in one page.
 
 ## Challenge deliverables
 
