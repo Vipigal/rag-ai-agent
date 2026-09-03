@@ -125,6 +125,7 @@ def _answers_dict(settings: AnswerSettings, aggregates: AnswerAggregates) -> dic
         "tool_enabled": settings.tool_enabled,
         "max_tool_rounds": settings.max_tool_rounds,
         "workers": settings.workers,
+        "thinking": settings.thinking,
         "gates": {
             "fact_recall": aggregates.gates.fact_recall,
             "fact_cases": aggregates.gates.fact_cases,
@@ -157,6 +158,8 @@ def _answers_dict(settings: AnswerSettings, aggregates: AnswerAggregates) -> dic
                 "requests": _per(aggregates.usage.requests, answered),
                 "input_tokens": _per(aggregates.usage.input_tokens, answered),
                 "output_tokens": _per(aggregates.usage.output_tokens, answered),
+                "reasoning_tokens": _per(aggregates.usage.reasoning_tokens, answered),
+                "cost_usd": _per(aggregates.usage.cost_usd, answered, digits=4),
             },
         },
         "slices": {
@@ -186,11 +189,13 @@ def _usage_dict(usage: Usage) -> dict:
         "input_tokens": usage.input_tokens,
         "cache_read_tokens": usage.cache_read_tokens,
         "output_tokens": usage.output_tokens,
+        "reasoning_tokens": usage.reasoning_tokens,
+        "cost_usd": round(usage.cost_usd, 4),
     }
 
 
-def _per(total: int, count: int) -> float:
-    return round(total / count, 1) if count else 0.0
+def _per(total: float, count: int, digits: int = 1) -> float:
+    return round(total / count, digits) if count else 0.0
 
 
 def _case_dict(case_run: CaseRun, answer_result: AnswerResult | None, with_answer: bool) -> dict:
@@ -385,7 +390,7 @@ def _answer_lines(payload: dict, answers: dict, previous: dict | None, paint: Pa
 
     lines.append("")
     lines.append(_answer_diagnostics_line(payload, answers, previous_answers, paint))
-    lines.extend(_efficiency_lines(answers))
+    lines.extend(_efficiency_lines(answers, previous_answers, paint))
     return lines
 
 
@@ -418,22 +423,51 @@ def _answer_diagnostics_line(
     return line
 
 
-def _efficiency_lines(answers: dict) -> list[str]:
+def _efficiency_lines(answers: dict, previous_answers: dict | None, paint: Painter) -> list[str]:
     efficiency = answers["efficiency"]
+    previous = previous_answers.get("efficiency") if previous_answers else None
     latency = efficiency["latency_ms"]
+    previous_latency = previous["latency_ms"] if previous else {}
     usage = efficiency["usage"]
+    previous_usage = previous["usage"] if previous else {}
     per_question = efficiency["per_question"]
+    mean = _cost_cell(latency["mean"], previous_latency.get("mean"), paint, _seconds)
+    p95 = _cost_cell(latency["p95"], previous_latency.get("p95"), paint, _seconds)
+    cost = _cost_cell(usage["cost_usd"], previous_usage.get("cost_usd"), paint, _dollars)
     return [
-        "EFFICIENCY    answer latency: "
-        f"mean {latency['mean'] / 1000:.1f} s · p95 {latency['p95'] / 1000:.1f} s"
+        f"EFFICIENCY    answer latency: mean {mean} · p95 {p95}"
         f" ({answers['workers']} workers)"
         f" · llm calls {usage['requests']} · tool calls {usage['tool_calls']}",
         "              tokens: "
         f"in {_thousands(usage['input_tokens'])} (cached {_thousands(usage['cache_read_tokens'])})"
         f" · out {_thousands(usage['output_tokens'])}"
+        f" (reasoning {_thousands(usage['reasoning_tokens'])})"
         f" · per question in {_thousands(per_question['input_tokens'])}"
         f" / out {_thousands(per_question['output_tokens'])}",
+        f"              cost: {cost} · per question ${per_question['cost_usd']:.4f}",
     ]
+
+
+def _seconds(milliseconds: float) -> str:
+    return f"{milliseconds / 1000:.1f} s"
+
+
+def _dollars(amount: float) -> str:
+    return f"${amount:.2f}"
+
+
+def _cost_cell(
+    value: float, previous: float | None, paint: Painter, fmt: Callable[[float], str]
+) -> str:
+    base = fmt(value)
+    if previous is None:
+        return base
+    delta = value - previous
+    shown = fmt(abs(delta))
+    if shown == fmt(0):
+        return f"{base} {paint('(=)', DIM)}"
+    sign = "-" if delta < 0 else "+"
+    return f"{base} {paint(f'({sign}{shown})', GREEN if delta < 0 else RED)}"
 
 
 def _thousands(value: float) -> str:

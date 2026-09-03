@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pymupdf
 import pytest
+from pymupdf import mupdf
 
+from domain.errors import UnreadableDocument
 from ingestion.pymupdf4llm_extractor import Pymupdf4llmExtractor, page_sections
 
 CESTARI = (
@@ -80,6 +82,30 @@ def test_running_headers_are_cleaned_out_of_page_text():
         "charlie content",
         "delta content",
     ]
+
+
+def test_bytes_that_only_look_like_a_pdf_raise_unreadable_document_naming_the_file():
+    with pytest.raises(UnreadableDocument, match="'broken.pdf' could not be read as a PDF") as raised:
+        Pymupdf4llmExtractor().extract(b"%PDF-1.4 garbage garbage", "broken.pdf")
+
+    assert raised.value.filename == "broken.pdf"
+    assert raised.value.reason
+
+
+def test_a_password_protected_pdf_is_unreadable_saying_why():
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), "secret")
+    locked = doc.tobytes(encryption=mupdf.PDF_ENCRYPT_AES_256, owner_pw="owner", user_pw="user")
+
+    with pytest.raises(UnreadableDocument, match="password"):
+        Pymupdf4llmExtractor().extract(locked, "locked.pdf")
+
+
+def test_a_pdf_that_opens_with_no_pages_is_unreadable():
+    truncated = (CESTARI.parent / "LB5001.pdf").read_bytes()[:4000]
+
+    with pytest.raises(UnreadableDocument, match="no pages"):
+        Pymupdf4llmExtractor().extract(truncated, "truncated.pdf")
 
 
 def test_page_sections_follow_the_toc_breadcrumb_when_the_pdf_has_an_outline():

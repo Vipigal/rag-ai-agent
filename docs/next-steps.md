@@ -4,7 +4,7 @@ title: Next Steps — Handoff from the 2026-09-02 session
 description: The ordered work for the sessions after 2026-09-02 — the reading path to review what landed, the five-step story of the retrieval gains (recall@5 0.65 → 0.95) with the why behind each for the oral exam, the code-review checklist with the open design questions, the citation-excerpt problem that page-level chunks created against the challenge's reference contract, the end-to-end test procedure, and the decisions and experiments still pending.
 tags: [handoff, next-steps, review, oral-exam, citations, evals]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T22:19:37Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T18:41:00Z }
 sources:
   - id: findings
@@ -124,6 +124,30 @@ relevant page (cap 0.20); precision@1 is 0.87 (see the findings).
   with `this event loop is already running`, so `POST /documents` had been
   broken in Docker since the embedder switch (architecture rule 5 now says
   routes are plain `def`). 215 tests, pyright zero.
+- **Added 2026-09-02 (reasoning effort, Decision 0012 §4, review pending):**
+  `build_llm()`, `llm_thinking_name()`, `llm_settings()` and the
+  `THINKING_EFFORTS` registry in `composition.py` (`LLM_THINKING`, default
+  `low`); `PydanticAiLLM(model, settings=)` forwarding `model_settings` and
+  exposing `.settings`; `Usage.reasoning_tokens`/`cost_usd` in `models.py`
+  with the adapter's `_to_usage`/`_cost_usd` (genai-prices via
+  `ModelResponse.cost()`, `LookupError` → 0.0); `AnswerSettings.thinking`,
+  `_usage_dict`/`per_question` and the compared `_efficiency_lines`
+  (`_cost_cell`, lower is green) in the eval; `run.py` builds the LLM
+  through `build_llm()`. Review question: should `_cost_cell` and
+  `_delta_cell` be one helper with a direction flag? 232 tests, pyright
+  zero.
+- **Added 2026-09-02 (error semantics, Decision 0014, review pending):**
+  `domain/errors.py` (`UnreadableDocument`, `ToolRoundsExhausted`);
+  `api/errors.py` (`ErrorResponse`, `ERROR_DESCRIPTIONS`,
+  `error_responses()`, `register_exception_handlers` with one handler per
+  class and the catch-all); `api/routes/health.py`; `validate_configuration`,
+  `_settings_using`, `PROVIDER_KEYS`/`PROVIDER_PREFIXES`, `qdrant_url` in
+  `composition.py`; the lifespan in `main.py`; `_open` in the extractor;
+  `_extract`/`_index` in the pipeline; `MAX_REPLY_ATTEMPTS` loop in the
+  LLM adapter; `IncompatibleCollection`; the route metadata and model
+  examples. Review questions: is the catch-all's exception name on the
+  wire acceptable for the submission, and should `ERROR_DESCRIPTIONS`
+  live next to the routes instead? 261 tests, pyright zero.
 
 # 4. Citations must be excerpts, not pages — ~~the open problem~~ done 2026-09-02
 
@@ -215,7 +239,14 @@ measured, not built"):
 - **Prompt iteration**, now measurable: the answer eval shows the
   retrieval reds becoming confident wrong answers cited from the wrong
   manual (no tool call), two false refusals on formula/figure cases, one
-  cross-document hallucination on a negative.
+  cross-document hallucination on a negative — and, since the `low`
+  effort run, quotes abridged with `...` or spliced across the mirrored
+  PT/ES text of CESTARI pages (14 dropped instead of 7).
+- ~~**Latency**~~ — diagnosed and fixed 2026-09-02 (findings chain 6):
+  reasoning tokens at the provider default were 85–94 % of the output;
+  `LLM_THINKING=low` took the mean from 16.0 to 5.9 s and the run from
+  ≈ $0.29 to $0.18. Still open: `minimal` on the eval (≈ 3 s, one wrong
+  table value in the probe) and the quote-discipline prompt line above.
 
 [^findings]: Eval Experiment Findings — the runs, flips, mechanisms and negative results behind sections 2 and 7.
 

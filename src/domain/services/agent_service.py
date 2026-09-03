@@ -1,5 +1,6 @@
 from dataclasses import replace
 
+from domain.errors import ToolRoundsExhausted
 from domain.models import AgentReply, Answer, Completion, Message, Reference, RetrievedChunk, ToolCall, Usage
 from domain.ports import LLM, Retriever, Tool
 from domain.services.prompts import SYSTEM_PROMPT, render_chunks, render_context
@@ -62,7 +63,7 @@ class AgentService:
             completion = self._llm.complete(messages, self._offered(tools, rounds))
             usage += completion.usage
 
-        return _to_answer(_final_reply(completion), seen, usage)
+        return _to_answer(_final_reply(completion, self._max_tool_rounds), seen, usage)
 
     def _offered(self, tools: list[Tool], rounds: int) -> list[Tool]:
         return tools if rounds < self._max_tool_rounds else []
@@ -84,11 +85,9 @@ def _run_tool(call: ToolCall, tools: list[Tool]) -> Message:
     return Message(role="tool", content=content, tool_call_id=call.id)
 
 
-def _final_reply(completion: Completion) -> AgentReply:
+def _final_reply(completion: Completion, max_tool_rounds: int) -> AgentReply:
     if completion.reply is None:
-        raise RuntimeError(
-            "the model kept requesting tools after the tool-round cap instead of replying"
-        )
+        raise ToolRoundsExhausted(max_tool_rounds)
     return completion.reply
 
 

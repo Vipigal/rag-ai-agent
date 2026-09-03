@@ -66,9 +66,11 @@ def execute_run(
 
     answer_runs: dict[str, AnswerRun] = {}
     if answerer is not None and answer_settings is not None:
+        thinking = answer_settings.thinking or "provider default"
         write_output(
             f"answering {len(cases)} cases with {answer_settings.workers} worker(s)"
-            f" · {answer_settings.llm_model} · tool {'on' if answer_settings.tool_enabled else 'off'}"
+            f" · {answer_settings.llm_model} · thinking {thinking}"
+            f" · tool {'on' if answer_settings.tool_enabled else 'off'}"
         )
         answer_runs = _answer_all(cases, answerer, answer_settings.workers, clock)
 
@@ -212,14 +214,14 @@ def main() -> None:
         agent_max_tool_rounds,
         build_agent_service,
         build_ingestion_service,
+        build_llm,
         build_vector_store,
         embedding_model_name,
         get_embedder,
-        llm_model,
         llm_model_name,
+        llm_thinking_name,
         query_knowledge_enabled,
     )
-    from llm.pydantic_ai_llm import PydanticAiLLM
     from retrieval.vector_retriever import VectorRetriever
 
     args = build_parser().parse_args()
@@ -242,13 +244,14 @@ def main() -> None:
     answerer: Answerer | None = None
     answer_settings: AnswerSettings | None = None
     if args.answers:
-        agent = build_agent_service(retriever, PydanticAiLLM(llm_model()), k=args.k)
+        agent = build_agent_service(retriever, build_llm(), k=args.k)
         answerer = agent.answer
         answer_settings = AnswerSettings(
             llm_model=llm_model_name(),
             tool_enabled=query_knowledge_enabled(),
             max_tool_rounds=agent_max_tool_rounds(),
             workers=args.workers,
+            thinking=llm_thinking_name(),
         )
 
     git_sha, git_dirty = _git_state()

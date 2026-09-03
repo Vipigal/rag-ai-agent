@@ -1,11 +1,14 @@
+import httpx
 import httpx2
 import openai
 import pytest
 from fastapi.testclient import TestClient
-from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError, UnexpectedModelBehavior
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from api.composition import get_agent_service
 from api.main import app
+from domain.errors import ToolRoundsExhausted
 from domain.models import Answer, Chunk, Reference
 
 QUESTION = "What is the power consumption of the motor?"
@@ -105,6 +108,49 @@ def test_every_llm_provider_failing_maps_to_502_naming_each_model(service):
     assert response.status_code == 502
     assert "gpt-5-mini" in response.json()["detail"]
     assert "gemini-3.5-flash" in response.json()["detail"]
+
+
+def _failing(service, exc: Exception):
+    def explode(question: str) -> Answer:
+        raise exc
+
+    service.answer = explode
+    return TestClient(app, raise_server_exceptions=False).post("/question", json={"question": QUESTION})
+
+
+def test_a_malformed_reply_after_the_retry_is_a_502_saying_so(service):
+    response = _failing(service, UnexpectedModelBehavior("the LLM returned a malformed reply twice", body="{oops"))
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "LLM reply unusable: the LLM returned a malformed reply twice"
+
+
+def test_exhausted_tool_rounds_are_a_502(service):
+    response = _failing(service, ToolRoundsExhausted(3))
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == (
+        "LLM reply unusable: the model kept requesting tools after 3 round(s) instead of replying"
+    )
+
+
+def test_a_vector_store_error_on_the_question_path_is_a_503(service):
+    response = _failing(
+        service,
+        UnexpectedResponse(
+            status_code=500, reason_phrase="Internal Server Error", content=b"boom", headers=httpx.Headers()
+        ),
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"].startswith("vector store unavailable at http://localhost:6333: ")
+
+
+def test_any_other_failure_on_the_question_path_is_a_500_that_names_the_exception(service):
+    response = _failing(service, KeyError("page"))
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "internal error: KeyError: 'page'"
 
 
 def test_openai_connection_failure_on_the_question_path_maps_to_502(service):

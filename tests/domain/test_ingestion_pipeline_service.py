@@ -2,6 +2,7 @@ import logging
 
 import pytest
 
+from domain.errors import UnreadableDocument
 from domain.models import Chunk, Document, Page, RetrievedChunk, chunk_id
 from domain.services.ingestion_pipeline import IngestionPipelineService
 
@@ -150,12 +151,47 @@ def test_ingest_logs_progress_per_file_and_totals(caplog: pytest.LogCaptureFixtu
         "ingesting 2 file(s)",
         "one.pdf: extracting (0.0 MB)",
         "one.pdf: 1 page(s) extracted in 1.0s",
-        "one.pdf: 2 chunk(s) as 2 unit(s) embedded and indexed in 1.0s",
         "two.pdf: extracting (0.0 MB)",
         "two.pdf: 1 page(s) extracted in 1.0s",
+        "one.pdf: 2 chunk(s) as 2 unit(s) embedded and indexed in 1.0s",
         "two.pdf: 2 chunk(s) as 2 unit(s) embedded and indexed in 1.0s",
-        "done: 2 document(s), 4 chunk(s) indexed in 7.0s",
+        "done: 2 document(s), 4 chunk(s) indexed in 9.0s",
     ]
+
+
+class ExtractorRejecting:
+    def __init__(self, filename: str) -> None:
+        self._filename = filename
+
+    def extract(self, data: bytes, filename: str) -> list[Page]:
+        if filename == self._filename:
+            raise UnreadableDocument(filename, "Failed to open stream")
+        return [Page(number=1, text=f"contents of {filename}", section=None)]
+
+
+def test_an_unreadable_file_aborts_the_upload_before_anything_is_embedded_or_stored():
+    store = FakeVectorStore()
+
+    class RecordingEmbedder(FakeEmbedder):
+        calls = 0
+
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            RecordingEmbedder.calls += 1
+            return super().embed_documents(texts)
+
+    service = IngestionPipelineService(
+        extractor=ExtractorRejecting("two.pdf"),
+        chunker=fake_chunker,
+        embedder=RecordingEmbedder(),
+        unit_splitter=fake_unit_splitter,
+        store=store,
+    )
+
+    with pytest.raises(UnreadableDocument, match="two.pdf"):
+        service.ingest([("one.pdf", b"%PDF fake one"), ("two.pdf", b"%PDF fake two")])
+
+    assert store.chunks == []
+    assert RecordingEmbedder.calls == 0
 
 
 def test_ingest_logs_when_a_document_yields_no_text(caplog: pytest.LogCaptureFixture):

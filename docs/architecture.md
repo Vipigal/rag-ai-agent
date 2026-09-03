@@ -4,7 +4,7 @@ title: System Architecture — Ports & Adapters Lite
 description: The operating map of the codebase — the hexagonal-lite structure, the concepts behind it (ports, adapters, domain services, composition root), the rules every implementation must follow, and how to extend the system.
 tags: [architecture, hexagonal, ports-and-adapters, ddd, protocols]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:57:30Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
 sources:
   - id: cosmic-python
@@ -42,6 +42,9 @@ src/
                 and UnitSplitter
     services    domain services — AgentService, IngestionPipelineService —
                 plus prompts: the deliberate prompt artifacts (Decision 0008)
+    errors      the domain's own failures — UnreadableDocument,
+                ToolRoundsExhausted — raised by adapters and services,
+                mapped to statuses at the edge (Decision 0014)
   ingestion/    adapters for extraction — pymupdf4llm between a font-repair
                 pre-pass and a page-cleaning post-pass — plus two plain
                 functions: the page chunker (one chunk per page) and the
@@ -51,9 +54,12 @@ src/
   retrieval/    adapters for embeddings and the vector store (Qdrant),
                 plus the Retriever strategies (vector, hybrid, decorators)
   llm/          adapters for LLM providers (PydanticAI direct, with a
-                FallbackModel wired at the composition root — Decisions
-                0008 and 0012)
-  api/          FastAPI edge: thin routes + the composition root
+                FallbackModel and the thinking level wired at the
+                composition root — Decisions 0008 and 0012)
+  api/          FastAPI edge: thin, documented routes (documents, question,
+                health) + the composition root (with the startup
+                validation) + errors: the one exception-to-status map and
+                the OpenAPI error responses (Decision 0014)
   evaluation/   the eval harness: golden-dataset loader, matching,
                 retrieval metrics, answer scoring (facts, citations,
                 refusals, usage), report, CLI runner (data lives in /evals)
@@ -150,6 +156,17 @@ reindex — its eval must cover both sides.
 10. **The architecture yields to the evals.** If a seam obstructs a
     retrieval experiment, reshape the seam and update this concept plus a
     decision record — never work around it in silence.
+11. **Adapters translate failures; the edge maps them; nothing reaches the
+    client unnamed.** An adapter turns the infrastructure's exceptions into
+    the domain's (`Pymupdf4llmExtractor` raises `UnreadableDocument`) or
+    keeps a library exception that already carries the meaning
+    (`ModelAPIError`, `UnexpectedModelBehavior`, `ApiException`); a domain
+    service raises from `domain/errors.py`. `api/errors.py` is the only
+    place that knows statuses: 422 the request, 502 a provider or an
+    unusable reply, 503 a dependency or the configuration, 500 a catch-all
+    that still names the exception and logs the traceback. Configuration
+    is validated in the lifespan, so a wrong `.env` fails `make up`, not
+    the first request (Decision 0014).
 
 # How to extend
 

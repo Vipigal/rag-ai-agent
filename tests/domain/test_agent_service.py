@@ -1,5 +1,8 @@
 from dataclasses import replace
 
+import pytest
+
+from domain.errors import ToolRoundsExhausted
 from domain.models import AgentReply, Chunk, Completion, Message, Reference, RetrievedChunk, ToolCall, Usage
 from domain.ports import Tool
 from domain.services.agent_service import AgentService
@@ -252,18 +255,39 @@ def test_answer_sums_usage_over_the_tool_loop_and_counts_dispatched_tool_calls()
     retriever = FakeRetriever({QUESTION: SEED, "lubrication interval": LUBRICATION})
     asking = replace(
         tool_request("call_1", "lubrication interval"),
-        usage=Usage(requests=1, input_tokens=2300, output_tokens=60),
+        usage=Usage(requests=1, input_tokens=2300, output_tokens=60, reasoning_tokens=40, cost_usd=0.0010),
     )
     answering = replace(
         final("Every 8000 h.", [GREASE]),
-        usage=Usage(requests=1, input_tokens=4100, cache_read_tokens=2200, output_tokens=140),
+        usage=Usage(
+            requests=1,
+            input_tokens=4100,
+            cache_read_tokens=2200,
+            output_tokens=140,
+            reasoning_tokens=90,
+            cost_usd=0.0025,
+        ),
     )
 
     answer = make_service(retriever, FakeLLM([asking, answering])).answer(QUESTION)
 
     assert answer.usage == Usage(
-        requests=2, tool_calls=1, input_tokens=6400, cache_read_tokens=2200, output_tokens=200
+        requests=2,
+        tool_calls=1,
+        input_tokens=6400,
+        cache_read_tokens=2200,
+        output_tokens=200,
+        reasoning_tokens=130,
+        cost_usd=0.0035,
     )
+
+
+def test_a_model_that_keeps_calling_tools_past_the_cap_raises_a_domain_error_naming_the_cap():
+    retriever = FakeRetriever({QUESTION: SEED, "again": SEED})
+    llm = FakeLLM([tool_request("call_1", "again"), tool_request("call_2", "again")])
+
+    with pytest.raises(ToolRoundsExhausted, match="after 1 round"):
+        make_service(retriever, llm, max_tool_rounds=1).answer(QUESTION)
 
 
 def test_the_reply_refusal_flag_reaches_the_answer():

@@ -4,7 +4,7 @@ title: Eval Harness Module
 description: How to run the retrieval eval (make eval / make eval-fresh) and the answer layer (make eval-answers), and what the code cannot say — the eval-collection re-ingestion procedure, the 0.6 token-overlap threshold and the containment subsumption, exclusion rules, the human-readable per-case results schema, the answer gates (fact recall, citation precision/recall, refusal rate) with their normalization caveat, error semantics, worker concurrency and the owner-as-judge workflow, the baseline findings (CESTARI text layer, cross-lingual axis), and where every later run's reading lives (evals/results/experiment-findings.md).
 tags: [evals, harness, retrieval, answers, metrics, baseline]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:53:05Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:27:00Z }
 sources:
   - id: spec
@@ -134,11 +134,26 @@ make eval-fresh label=<label>
   that case and scored as the worst outcome — not answered, facts 0,
   citations 0/0 — and is neither a refusal nor a false refusal. `errors N`
   is painted red; on a 429 the fix is fewer `--workers`.
-- **Usage is what the provider reports.** `output_tokens` include the
-  gpt-5 family's reasoning tokens; `cache_read_tokens` are carried because
-  every tool round re-sends the prompt prefix and OpenAI discounts cached
-  input, so tool-on cost would otherwise be overstated. Per-question means
-  divide by the answered (non-errored) cases.
+- **Usage is what the provider reports, plus its price.** `output_tokens`
+  include the gpt-5 family's reasoning tokens, and since 2026-09-02
+  `reasoning_tokens` names that share (the console prints `out 112.0k
+  (reasoning 98.0k)`), because the latency investigation found it was
+  85–94 % of the output at the provider's default effort and invisible in
+  the totals; `cache_read_tokens` are carried because every tool round
+  re-sends the prompt prefix and OpenAI discounts cached input, so tool-on
+  cost would otherwise be overstated. **`cost_usd`** is the LLM spend of
+  the run priced by genai-prices through the adapter (see the
+  [LLM Module](/src/llm/llm.md)) — the `cost:` line shows the run total
+  and the per-question mean, so a row of the scoreboard says what it cost
+  to produce; embedding calls are not included (three orders of magnitude
+  smaller). Per-question means divide by the answered (non-errored) cases.
+- **The thinking level is recorded and compared.** `answers.thinking` in
+  the JSON and `thinking <level>` on the progress line carry
+  `LLM_THINKING` as the run saw it, because two runs at different levels
+  are a different experiment; the `EFFICIENCY` lines paint the answer
+  latency (mean, p95) and the cost against the compared run — **lower is
+  green** there, the opposite of the gates — so a latency experiment reads
+  its result on the same screen as the gates it must not move.
 - **Latency is measured under concurrency**, so `workers` is recorded
   with the run and answer latencies are comparable only at the same
   value. Each worker thread runs its own event loop; the embedding

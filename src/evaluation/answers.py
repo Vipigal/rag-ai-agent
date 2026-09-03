@@ -18,6 +18,7 @@ class AnswerSettings:
     tool_enabled: bool
     max_tool_rounds: int
     workers: int
+    thinking: str | None = None
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,6 @@
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from pydantic_ai import Tool as FunctionTool
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.direct import model_request_sync
 from pydantic_ai.messages import (
     ModelMessage,
@@ -15,9 +16,12 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.output import OutputObjectDefinition
+from pydantic_ai.settings import ModelSettings
 
 from domain.models import AgentReply, Completion, Message, ToolCall, Usage
 from domain.ports import Tool
+
+MAX_REPLY_ATTEMPTS = 2
 
 REPLY_ADAPTER = TypeAdapter(AgentReply)
 
@@ -29,22 +33,44 @@ REPLY_OUTPUT = OutputObjectDefinition(
 
 
 class PydanticAiLLM:
-    def __init__(self, model: Model | str) -> None:
+    def __init__(self, model: Model | str, settings: ModelSettings | None = None) -> None:
         self._model = model
+        self._settings = settings
+
+    @property
+    def settings(self) -> ModelSettings | None:
+        return self._settings
 
     def complete(self, messages: list[Message], tools: list[Tool]) -> Completion:
-        response = model_request_sync(
-            self._model,
-            _to_provider_messages(messages),
-            model_request_parameters=ModelRequestParameters(
-                function_tools=[FunctionTool(tool, strict=True).tool_def for tool in tools],
-                output_mode="native",
-                output_object=REPLY_OUTPUT,
-            ),
+        provider_messages = _to_provider_messages(messages)
+        parameters = ModelRequestParameters(
+            function_tools=[FunctionTool(tool, strict=True).tool_def for tool in tools],
+            output_mode="native",
+            output_object=REPLY_OUTPUT,
         )
-        message = _to_domain_message(response)
-        reply = None if message.tool_calls else REPLY_ADAPTER.validate_json(message.content)
-        return Completion(message=message, reply=reply, usage=_to_usage(response))
+        usage = Usage()
+        for attempt in range(MAX_REPLY_ATTEMPTS):
+            response = model_request_sync(
+                self._model,
+                provider_messages,
+                model_settings=self._settings,
+                model_request_parameters=parameters,
+            )
+            usage += _to_usage(response)
+            message = _to_domain_message(response)
+            if message.tool_calls:
+                return Completion(message=message, reply=None, usage=usage)
+            try:
+                reply = REPLY_ADAPTER.validate_json(message.content)
+            except ValidationError as error:
+                if attempt == MAX_REPLY_ATTEMPTS - 1:
+                    raise UnexpectedModelBehavior(
+                        f"the LLM returned a malformed reply {MAX_REPLY_ATTEMPTS} times: {error}",
+                        body=message.content,
+                    ) from error
+                continue
+            return Completion(message=message, reply=reply, usage=usage)
+        raise AssertionError("unreachable: every attempt returns or raises")
 
 
 def _to_provider_messages(messages: list[Message]) -> list[ModelMessage]:
@@ -103,9 +129,21 @@ def _to_domain_message(response: ModelResponse) -> Message:
 
 
 def _to_usage(response: ModelResponse) -> Usage:
+    details = response.usage.details
     return Usage(
         requests=1,
         input_tokens=response.usage.input_tokens,
         cache_read_tokens=response.usage.cache_read_tokens,
         output_tokens=response.usage.output_tokens,
+        reasoning_tokens=details.get("reasoning_tokens", 0) + details.get("thoughts_tokens", 0),
+        cost_usd=_cost_usd(response),
     )
+
+
+def _cost_usd(response: ModelResponse) -> float:
+    if not response.model_name:
+        return 0.0
+    try:
+        return float(response.cost().total_price)
+    except LookupError:
+        return 0.0

@@ -4,7 +4,7 @@ title: Ingestion Module
 description: The write path's extraction and chunking stage — pymupdf4llm behind a font-repair pre-pass (ToUnicode CMaps from fontTools' standard glyph order for fonts that lack one, no OCR) and a page-cleaning post-pass (running headers, page numbers, dot leaders), sections from the PDF outline or from markdown headings, one chunk per page, and the small units (paragraphs, table rows) the embedder sees for each chunk — with the rules the code cannot state, the measured corpus numbers and the experiments that shaped them.
 tags: [ingestion, pdf-extraction, font-repair, page-cleaning, chunking, embeddings, multivector, pymupdf4llm]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T06:10:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T03:18:00Z }
 sources:
   - id: decision-0011
@@ -37,7 +37,13 @@ callable that makes **one chunk per page**. `embedding_units`, the
 `UnitSplitter` callable injected into the pipeline service like the
 chunker, decides what the embedder sees for each chunk: its paragraphs
 and table rows, each prefixed with the document and section. The Qdrant
-store keeps those unit vectors on the chunk's single point. The baseline this replaced is [Decision
+store keeps those unit vectors on the chunk's single point. The extractor
+is also where a bad file becomes domain language: bytes pymupdf cannot
+open (any `RuntimeError` from `pymupdf.open`, `FileDataError` included), a
+document that `needs_pass` and a document with zero pages raise
+`domain.errors.UnreadableDocument(filename, reason)`, which the API answers
+as a 422 naming the file — the route's `%PDF` header check only catches
+files that are not PDFs at all ([Decision 0014](/docs/decisions/0014-error-semantics-and-startup-validation.md)). The baseline this replaced is [Decision
 0007](/docs/decisions/0007-naive-ingestion-baseline.md);[^decision-0007]
 the runs that shaped every rule below are read in [Eval Experiment
 Findings](/evals/results/experiment-findings.md).[^findings]
@@ -155,6 +161,12 @@ cost analysis assumed the old size.
   indexed in`, and a `done:` total.
 - Re-ingestion is idempotent by deterministic IDs
   (`chunk_id(document_id, index)`, content-addressed `document_id`).
+- **An upload is all-or-nothing.** `IngestionPipelineService.ingest` runs
+  two phases — extract and chunk every file, then embed and store each —
+  so an unreadable second file aborts the request before the first is
+  indexed (Decision 0014). The per-file log lines are therefore grouped:
+  all `extracting`/`page(s) extracted` lines first, then the
+  `embedded and indexed` lines, then `done:`.
 
 [^decision-0011]:
     0011 — Ingestion, second pass: font repair instead of OCR, page

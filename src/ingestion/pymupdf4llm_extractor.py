@@ -4,6 +4,7 @@ import re
 import pymupdf
 import pymupdf4llm
 
+from domain.errors import UnreadableDocument
 from domain.models import SECTION_SEPARATOR, Page
 from ingestion.page_cleaning import clean_pages
 from ingestion.pdf_font_repair import repair_fonts
@@ -17,7 +18,7 @@ _INLINE_TAGS = re.compile(r"</?(?:u|b|i)>")
 
 class Pymupdf4llmExtractor:
     def extract(self, data: bytes, filename: str) -> list[Page]:
-        doc = pymupdf.open(stream=data, filetype="pdf")
+        doc = _open(data, filename)
         repaired = repair_fonts(doc)
         if repaired:
             log.info(
@@ -56,6 +57,18 @@ class Pymupdf4llmExtractor:
             Page(number=number, text=text, section=section)
             for number, (text, section) in enumerate(zip(cleaned, sections), start=1)
         ]
+
+
+def _open(data: bytes, filename: str) -> pymupdf.Document:
+    try:
+        doc = pymupdf.open(stream=data, filetype="pdf")
+    except RuntimeError as error:
+        raise UnreadableDocument(filename, str(error)) from error
+    if doc.needs_pass:
+        raise UnreadableDocument(filename, "the file is password-protected")
+    if doc.page_count == 0:
+        raise UnreadableDocument(filename, "the file has no pages")
+    return doc
 
 
 def page_sections(

@@ -167,7 +167,9 @@ def test_cli_parser_defaults_match_the_spec() -> None:
     assert args.no_compare is False
 
 
-SETTINGS = AnswerSettings(llm_model="openai:gpt-5-mini", tool_enabled=True, max_tool_rounds=3, workers=1)
+SETTINGS = AnswerSettings(
+    llm_model="openai:gpt-5-mini", tool_enabled=True, max_tool_rounds=3, workers=1, thinking="low"
+)
 
 
 def _answer(text: str, has_answer: bool = True) -> Answer:
@@ -191,9 +193,10 @@ def test_answers_every_case_including_unanswerable_ones_and_records_the_settings
     assert payload["cases"][0]["answer"]["text"] == "9500 horas."
     assert payload["cases"][0]["answer"]["latency_ms"] == 10.0
     assert payload["answers"]["llm_model"] == "openai:gpt-5-mini"
+    assert payload["answers"]["thinking"] == "low"
     assert payload["answers"]["gates"]["refusal_rate"] == 1.0
     assert payload["answers"]["efficiency"]["usage"]["requests"] == 2
-    assert "answering 2 cases with 1 worker(s)" in printed[0]
+    assert "answering 2 cases with 1 worker(s) · openai:gpt-5-mini · thinking low · tool on" in printed[0]
     assert "ANSWER GATES" in printed[1]
 
 

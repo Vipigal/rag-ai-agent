@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Eval Experiment Findings
-description: What each committed eval run taught and why — the 2026-09-02 ingestion chain step by step (font repair, page cleaning, structured chunking, contextualized embeddings), the chunking-core chain that followed (fontTools refactor proven equivalent, page chunks with per-unit vectors at +0.05 recall), the embedder chain (gemini-embedding-001 at +0.09 recall, six of eleven cross-lingual cases, 8× the token price in cents) the answer layer's first two runs (chain 4 — fact recall 0.93, citation precision 0.70, the query_knowledge tool neutral on the gates, the reds grouped by cause: retrieval misses become confident wrong answers) and the citations-as-quotes change (chain 5 — citation precision up because a quote is a commitment, the normalizer rules learned from dropped quotes, a malformed provider reply, the broken async upload route), with the cases that flipped and the mechanism behind each move, the negative results, the measured-not-built probes (section-level parents, the cross-lingual residue where translating the question recovers 3 of 4 reds), the discoveries made along the way, and the failure axes that remain, so the next experiment starts from evidence instead of intuition.
+description: What each committed eval run taught and why — the 2026-09-02 ingestion chain step by step (font repair, page cleaning, structured chunking, contextualized embeddings), the chunking-core chain that followed (fontTools refactor proven equivalent, page chunks with per-unit vectors at +0.05 recall), the embedder chain (gemini-embedding-001 at +0.09 recall, six of eleven cross-lingual cases, 8× the token price in cents) the answer layer's first two runs (chain 4 — fact recall 0.93, citation precision 0.70, the query_knowledge tool neutral on the gates, the reds grouped by cause: retrieval misses become confident wrong answers) the citations-as-quotes change (chain 5 — citation precision up because a quote is a commitment, the normalizer rules learned from dropped quotes, a malformed provider reply, the broken async upload route) and the latency chain (chain 6 — reasoning tokens were 85–94 % of the output at the provider's default effort; thinking low cut the mean answer time 16.0 → 5.9 s and the run's cost $0.29 → $0.18 with the gates inside noise, at the price of twice the dropped quotes), with the cases that flipped and the mechanism behind each move, the negative results, the measured-not-built probes (section-level parents, the cross-lingual residue where translating the question recovers 3 of 4 reds), the discoveries made along the way, and the failure axes that remain, so the next experiment starts from evidence instead of intuition.
 tags:
   [
     evals,
@@ -14,7 +14,7 @@ tags:
     negative-results,
   ]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T22:19:37Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T18:42:00Z }
 sources:
   - id: results
@@ -486,6 +486,85 @@ extractor's markup, and both rules were learned from dropped quotes, not
 guessed; a retrieval miss stays a wrong answer — now with verifiable wrong
 quotes.
 
+# Chain 6 — reasoning effort, the latency chain (2026-09-02)
+
+The owner's review found the `/question` latency (8–25 s live, 16.0 s
+mean in chain 5) too high for a demo and asked where it came from before
+anything was changed. Diagnosis first, from the chain 5 JSON, then a live
+probe, then one eval run.
+
+**Where the time went.** Over the 84 single-request cases of chain 5,
+answer latency correlates **0.92 with output tokens** (0.25 with input
+tokens, 0.58 with quote characters): 10.6 ms per output token with a 1.5 s
+intercept. The output was 1,275 tokens per question, but the visible
+answer and quotes account for ≈ 130 of them — the rest was reasoning.
+A probe through the adapter with `usage.details` printed showed it: the
+23 s question (`lb5001-001`) spent **1,920 of its 2,048 output tokens
+reasoning** at the provider's default effort (medium for `gpt-5-mini`);
+the fastest answers had 300–450 output tokens. Retrieval is a fixed
+≈ 0.5 s (Gemini query embedding 0.35–0.5 s, Qdrant 0.01 s); the
+`query_knowledge` rounds only stretch the tail (8 of 92 cases; a 4-request
+case took 55 s); quotes cost ≈ 76 tokens ≈ 0.8 s. Same three questions,
+one variable: default 6.5 / 12.0 / 23.6 s → `low` 4.4 / 3.1 / 5.2 s →
+`minimal` 2.6 / 2.6 / 5.1 s, reasoning tokens 384–1,920 → 128–320 → 0.
+`minimal` answered the 440TY oil question with a "1.5" that is not in the
+table, so `low` became the default and the eval decided (Decision 0012
+§4; the knob is `LLM_THINKING`, the LLM module says how it reaches both
+providers). The adapter now records `reasoning_tokens` and prices each
+response with genai-prices (`cost_usd`), so this chain is the first with
+a cost column that is measured, not estimated.
+
+| Run                                        | thinking | fact_recall | cit. precision | cit. recall | refusal | false refusal | errors | unmatched quotes | pages / answer | quotes / answer | latency mean / median / p95 | out tokens per q. | reasoning per q. | tool calls | cost (LLM) |
+| ------------------------------------------ | -------- | ----------: | -------------: | ----------: | ------: | ------------: | -----: | ---------------: | -------------: | --------------: | --------------------------: | ----------------: | ---------------: | ---------: | ---------: |
+| `20260902-221750-citations-as-quotes`      | default (medium) | 0.92 | 0.78 | 0.90 | 7/8 | 0.02 | 1 | 7 | 1.38 | 2.48 | 16.0 / 13.7 / 29.0 s | 1,255 | not recorded | 16 | ≈ $0.29 (from tokens) |
+| `20260903-010828-thinking-low`             | **low**  | 0.91 (−0.01) | 0.79 (+0.01) | **0.86 (−0.04)** | 7/8 (=) | 0.02 (=) | 0 | **14** | 1.22 | 2.06 | **5.9 / 5.7 / 10.2 s** | 389 | 184 | 7 | **$0.18** |
+
+Same collection, same k, same tool settings, 8 workers; the retrieval
+gates are identical by construction (`=` on every row).
+
+## What low effort changed
+
+- **Latency −63 % on the mean, −65 % on p95, the whole distribution
+  moved**: slowest case 89 s → 15 s, fastest 4.7 → 2.2 s. Output tokens
+  per question 1,255 → 389, of which 184 are still reasoning: `low` is not
+  zero thinking, it is a third of the budget.
+- **Fact recall and citation precision are inside the ±0.03 noise.**
+  Three cases flipped: `cestari-009` (the chain-3 loser) is now answered
+  with half its facts instead of refused; `mn414-015` (storage over six
+  months) lost its fact — the answer names the procedure without the
+  number; `mn414-016` went from the chain-5 malformed-JSON error to a
+  clean refusal (not attributable to the setting; the error was a
+  provider incident).
+- **Citation recall −0.04 is the cost, and it has a mechanism.** The
+  model cites fewer pages (1.38 → 1.22 per answer) and copies less
+  carefully: **unmatched quotes doubled, 7 → 14**. Read one by one, the
+  new failures are of two kinds the chain-5 normalizer does not forgive:
+  passages **abridged with `...`** in the middle (`weg-guia-039`, whose
+  only quote was dropped, so the case scores 0/0), and passages that
+  **blend the mirrored PT/ES text** of a CESTARI page into one sentence
+  ("Para períodos de 6 meses até 9 meses sem operação, es recomendado
+  llenar…", `cestari-004`, `mn414-007`, `mn414-014`). Two cases lost every
+  quote (`cestari-015`, `weg-guia-039`); the by-document deltas show it as
+  LB5001 precision −0.12 and the guia's recall −0.08 on single cases.
+- **The tool fires less: 16 → 7 calls.** Less deliberation means fewer
+  reformulated searches; `cestari-009` was nonetheless rescued, so the
+  seed context, not the tool, carried it this time.
+- **Cost −39 %**: $0.29 (estimated from the recorded tokens of chain 5
+  with the same price table) → $0.18 recorded, $0.0019 per question;
+  input tokens also fell (689 k → 529 k) because fewer tool rounds re-send
+  the prefix. Embedding calls are outside both numbers.
+
+## What this says about the next step
+
+The two gates the change touched are the quoting ones, and their failures
+are copy discipline, not knowledge: a prompt line forbidding `...` inside
+a quote and mixed-language splices is a one-run experiment now that the
+efficiency lines compare latency and cost against the previous run.
+`minimal` is still unmeasured on the eval — the probe's wrong number is
+one observation — and would take the mean toward ≈ 3 s. Cross-lingual
+query translation remains the retrieval lever (three MN414 reds are still
+confident wrong answers at either effort).
+
 # Reading precision@5 (asked 2026-09-02)
 
 `precision@5` is `relevant slots / 5` per case, averaged; a slot is
@@ -641,13 +720,18 @@ would produce); rank of the gold page in the top 50:
 3. ~~**Citations as excerpts**~~ — done, Decision 0013, chain 5.
 4. **Prompt iteration on the answer layer's reds**: the false refusals on
    formula/figure cases, the cross-document warranty answer on a negative
-   (chain 4) — one prompt change per run.
-5. **Hybrid sparse + dense retrieval** for exact identifiers (`W1/W2`,
+   (chain 4), and now the quote discipline `low` effort loosened (chain 6:
+   no `...` inside a quote, no PT/ES splices) — one prompt change per run.
+5. **`LLM_THINKING=minimal` on the eval** (chain 6 probe: ≈ 3 s mean, one
+   wrong table value in three questions) — keep only if the quoting gates
+   hold.
+6. **Hybrid sparse + dense retrieval** for exact identifiers (`W1/W2`,
    `MN417`-style tokens) with RRF fusion[^retrieval-evidence] — one case
    on this dataset, partially.
-6. **Mirrored-page handling** for trilingual manuals (page language at
+7. **Mirrored-page handling** for trilingual manuals (page language at
    ingestion, filter or dedupe at retrieval) — the `cestari-009` slot.
-7. ~~A multilingual embedder~~ — done in chain 3. ~~A chunking strategy
+8. ~~A multilingual embedder~~ — done in chain 3. ~~The latency
+   question~~ — answered in chain 6 (reasoning tokens; `LLM_THINKING=low`). ~~A chunking strategy
    that differs in its core~~ — done in chain 2. ~~The answer-layer
    eval~~ — built, chain 4. Any boundary-only chunking variant should
    still be expected to land within ±0.02.

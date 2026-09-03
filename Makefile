@@ -28,6 +28,8 @@ check-venv:
 
 check-env:
 	@test -f .env || { echo "No .env found. Run: cp .env.example .env   then set OPENAI_API_KEY and GEMINI_API_KEY in it"; exit 1; }
+	@grep -qE '^OPENAI_API_KEY=[^[:space:]]+' .env || { echo "OPENAI_API_KEY is empty in .env: set it (the LLM needs it)"; exit 1; }
+	@grep -qE '^GEMINI_API_KEY=[^[:space:]]+' .env || { echo "GEMINI_API_KEY is empty in .env: set it (the embedder and the LLM fallback need it)"; exit 1; }
 
 up: check-env
 	@docker compose up --build

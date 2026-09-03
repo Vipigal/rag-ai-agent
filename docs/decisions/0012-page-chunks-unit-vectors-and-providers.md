@@ -1,10 +1,10 @@
 ---
 type: Decision
-title: 0012 — Retrieval granularity and providers: page chunks with unit vectors, Gemini embeddings, LLM fallback
-description: The chunk is the page and the vector is the unit — each page's paragraphs and table rows are embedded separately and kept as one Qdrant multivector scored by MaxSim (recall@5 0.81 → 0.86, precision@5 0.25 → 0.34) — the embedder is google:gemini-embedding-001 through pydantic-ai's Embedder (recall@5 0.86 → 0.95, six of eleven cross-lingual misses recovered) with the OpenAI models kept as config, and the LLM falls back from gpt-5-mini to gemini-3.5-flash through pydantic-ai's FallbackModel; structured packing, section-level parents, text-embedding-3-large and the other Gemini flash models were measured or reasoned out.
-tags: [retrieval, chunking, multivector, embeddings, gemini, fallback, pydantic-ai, qdrant, evals]
+title: 0012 — Retrieval granularity and providers: page chunks with unit vectors, Gemini embeddings, LLM fallback, low reasoning effort
+description: The chunk is the page and the vector is the unit — each page's paragraphs and table rows are embedded separately and kept as one Qdrant multivector scored by MaxSim (recall@5 0.81 → 0.86, precision@5 0.25 → 0.34) — the embedder is google:gemini-embedding-001 through pydantic-ai's Embedder (recall@5 0.86 → 0.95, six of eleven cross-lingual misses recovered) with the OpenAI models kept as config, the LLM falls back from gpt-5-mini to gemini-3.5-flash through pydantic-ai's FallbackModel, and (amended 2026-09-02) the LLM reasons at low effort through pydantic-ai's unified thinking setting, LLM_THINKING=low, because reasoning tokens were 85–94 % of the output and of the latency (answer mean 16.0 → 5.9 s, cost per run $0.29 → $0.18, gates inside noise, dropped quotes doubled); structured packing, section-level parents, text-embedding-3-large, the other Gemini flash models, the provider default and minimal effort were measured or reasoned out.
+tags: [retrieval, chunking, multivector, embeddings, gemini, fallback, pydantic-ai, qdrant, evals, thinking, latency, cost]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T18:10:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T18:41:00Z }
 sources:
   - id: findings
@@ -123,6 +123,44 @@ schema and cited correctly, and it took the request end to end when the
 primary returned 404. Its latency varied widely in the probe (1.9 s to
 45 s), acceptable for a fallback, not for a primary.
 
+## 4. The LLM reasons at `low` effort (amended 2026-09-02)
+
+`build_llm()` at the composition root builds `PydanticAiLLM` with
+`ModelSettings(thinking=<LLM_THINKING>)`, default **`low`**
+(`minimal`/`low`/`medium`/`high`/`xhigh`/`off`; blank keeps the
+provider's default; unknown values are rejected naming the choices). The
+route and the eval share `build_llm()`, so a run measures what the API
+ships. The unified `thinking` field is chosen over `openai_reasoning_effort`
+because pydantic-ai translates it per provider — `reasoning.effort` for
+`gpt-5-mini`, `thinking_level` for `gemini-3.5-flash` — so one knob covers
+the primary and the fallback, and a model whose profile does not support
+thinking ignores it silently.[^llm-module]
+
+Why: the owner's review of the repo found 8–25 s per question too slow for
+a demo; the diagnosis (findings chain 6) showed latency correlating 0.92
+with output tokens at ≈ 10.6 ms per token, and **reasoning tokens were
+85–94 % of the output** at the provider default (medium) — a 23 s answer
+spent 1,920 of 2,048 output tokens reasoning. Quotes (≈ 76 tokens),
+retrieval (≈ 0.5 s) and the input size were ruled out. `low` on the same
+three questions: 6.5 / 12.0 / 23.6 s → 4.4 / 3.1 / 5.2 s.[^findings]
+
+What it cost, measured (`20260903-010828-thinking-low` against the chain
+5 run): answer latency mean **16.0 → 5.9 s**, p95 29.0 → 10.2 s; fact
+recall 0.92 → 0.91 and citation precision 0.78 → 0.79 (noise); citation
+recall **0.90 → 0.86**, because the model quotes fewer pages and copies
+less carefully (dropped quotes 7 → 14: passages abridged with `...`, PT/ES
+splices on mirrored CESTARI pages); refusals 7/8 unchanged; tool calls
+16 → 7; run cost $0.29 (estimated from tokens) → **$0.18** recorded. The
+quoting regression is prompt work, queued in the findings, not a reason
+to spend three times the tokens on every question.
+
+Rejected: the **provider default** (the latency above, and it was never a
+choice — no setting had been sent); **`minimal`** (≈ 3 s in the probe, but
+it answered the 440TY oil question with a value not in the table; kept as
+a one-run experiment, not the default); **`openai_reasoning_effort`**
+(OpenAI-only, the fallback would keep its default); **streaming** (the
+contract is one JSON body; it would hide the time, not remove it).
+
 ## The measured chain (k=5, threshold 0.6)
 
 | Run                                           | recall@5 | hit_rate@5 |    MRR@5 | precision@5 | red |
@@ -186,9 +224,15 @@ retrieval change, and has no eval row; it was verified by hand.
   `EmbeddingModel` port gained `embed_documents`/`embed_query`, and
   `VectorStore.add` takes one vector group per chunk.
 - Rules served: **Retrieval** (recall@5 0.81 → 0.95), **Functionality**
-  (a provider outage no longer fails the question), **Developer UX** (one
-  env value per choice, refusals that name the fix), **Code Quality** (a
-  21-line chunker and an 18-line embedder adapter replaced ~250 lines).
+  (a provider outage no longer fails the question; answers in ≈ 6 s
+  instead of 16 s), **Developer UX** (one env value per choice, refusals
+  that name the fix, a demo that does not wait 20 s per question),
+  **Code Quality** (a 21-line chunker and an 18-line embedder adapter
+  replaced ~250 lines).
+- Item 4 trades citation recall −0.04 and twice the dropped quotes for
+  −63 % latency and −39 % cost; `Usage` now carries `reasoning_tokens` and
+  a genai-prices `cost_usd`, so every later answer run reports what it
+  cost and how much of its output was thinking.
 
 [^findings]: Eval Experiment Findings — chains 2 and 3, the section-parent measurement and the remaining axes.
 

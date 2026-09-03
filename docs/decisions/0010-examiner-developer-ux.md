@@ -17,6 +17,14 @@ sources:
     title: Ingestion Module
 ---
 
+> **Amended by [Decision 0014](/docs/decisions/0014-error-semantics-and-startup-validation.md)**
+> (2026-09-02): the "a failed prerequisite names the next command" rule now
+> reaches the keys and the process itself — `make check-env` refuses empty
+> `OPENAI_API_KEY`/`GEMINI_API_KEY`, the FastAPI lifespan validates the
+> configuration and the vector store at startup so `make up` fails naming
+> the problem, `GET /health` reports readiness, and every API error is one
+> `{"detail": …}` sentence with a status that says who is at fault.
+
 # Context
 
 An evaluator has 30–60 minutes with this repo, and the _Developer UX_

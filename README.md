@@ -53,13 +53,24 @@ Interactive OpenAPI docs live at <http://localhost:8000/docs>.
 | ----------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
 | `POST /documents` | `multipart/form-data`, one or more PDFs under `files` | `{"message", "documents_indexed", "total_chunks"}`           |
 | `POST /question`  | `{"question": "..."}`                                | `{"answer", "references": [verbatim excerpts the answer cites]}` |
-| `GET /health`     | —                                                    | `{"status": "ok"}`                                           |
+| `GET /health`     | —                                                    | `{"status", "vector_store", "indexed_chunks", "llm_model", "embedding_model"}`; `503` when Qdrant is down |
 
-Error semantics are deliberate: a non-PDF upload is a `422` naming the
-offending file and nothing is indexed (all-or-nothing); a blank question is
-a `422`; provider failures surface as `502` with the provider named.
-Re-uploading a file is idempotent — chunk ids are content-addressed, so
-the index never accumulates duplicates.
+Every error body is one sentence, `{"detail": "..."}`, and the status says
+who is at fault:
+
+| Status | When | Example |
+| --- | --- | --- |
+| `422` | The request: blank question, a file that is not a PDF, or a PDF that cannot be read (corrupt, password-protected, no pages). Nothing is indexed: an upload is all-or-nothing. | `'scan.pdf' could not be read as a PDF: Failed to open stream` |
+| `502` | An LLM or embedding provider failed after the fallback, or the LLM's reply was unusable (a malformed reply is requested once more first). The provider or model is named. | `every LLM provider failed: … gpt-5-mini … gemini-3.5-flash …` |
+| `503` | A dependency or the configuration: Qdrant unreachable or its collection built with another embedding model, or a provider key missing. The message names the fix. | `vector store unavailable at http://qdrant:6333: [Errno 111] Connection refused` |
+| `500` | Anything unexpected. Still named: `internal error: <Type>: <message>`, traceback in the server log. | |
+
+Configuration mistakes fail before any request: `make check-env` refuses an
+empty key, and the API validates the models, the keys and the vector store
+at startup, so a wrong `.env` shows up in the `make up` terminal as
+`startup failed: …`. When something fails later, `GET /health` says which
+dependency is down. Re-uploading a file is idempotent — chunk ids are
+content-addressed, so the index never accumulates duplicates.
 
 ### Example requests and responses
 
@@ -122,8 +133,11 @@ invents a source:
 }
 ```
 
-Questions take several seconds each (8–25 s observed): one or two LLM
-calls plus retrieval, with the model writing out the passages it quotes.
+Questions take a few seconds each (2–15 s observed, median ≈ 6 s): one
+or two LLM calls plus retrieval, with the model writing out the passages
+it quotes. The model reasons at low effort by default (`LLM_THINKING`);
+at the provider default it spent most of its output tokens thinking and
+answers took 16 s on average.
 
 ## How it works
 
@@ -228,11 +242,16 @@ cases' `expected_facts`, citation precision and recall over the cited
 `(document, page)` pairs, refusal rate over the 8 unanswerable controls.
 No LLM judge — red cases are read by hand from the per-case JSON.
 
-| Run | Citations | `query_knowledge` tool | fact recall | citation precision | citation recall | refusals | latency (mean) |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json) | chunk ids | on | **0.93** | 0.70 | **0.92** | 6/8 | 11.7 s |
-| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json) | chunk ids | off | 0.92 | 0.73 | 0.91 | 7/8 | 10.5 s |
-| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json) | verbatim quotes | on | 0.92 | **0.78** | 0.90 | 7/8 | 16.0 s |
+| Run | Citations | `query_knowledge` tool | reasoning effort | fact recall | citation precision | citation recall | refusals | latency (mean) | cost (LLM) |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json) | chunk ids | on | provider default | **0.93** | 0.70 | **0.92** | 6/8 | 11.7 s | ≈ $0.22 |
+| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json) | chunk ids | off | provider default | 0.92 | 0.73 | 0.91 | 7/8 | 10.5 s | ≈ $0.18 |
+| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json) | verbatim quotes | on | provider default | 0.92 | 0.78 | 0.90 | 7/8 | 16.0 s | ≈ $0.29 |
+| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json) | verbatim quotes | on | `low` | 0.91 | **0.79** | 0.86 | 7/8 | **5.9 s** | **$0.18** |
+
+Costs marked ≈ are computed after the fact from each run's recorded
+tokens with the same price table; the last row's is recorded by the run
+itself (embedding calls excluded, three orders of magnitude smaller).
 
 The tool is neutral on the gates on this dataset (run-to-run noise is
 ≈ ±0.03): it costs about a second and 55 % more input tokens, searches
@@ -241,8 +260,15 @@ three cross-lingual retrieval misses, which become confidently wrong
 answers — the next retrieval work item. Making the model quote the
 passages it cites instead of naming chunks raised citation precision
 (fewer, better pages cited) at the cost of the quotes' output tokens;
-7 of 200 quotes were dropped as not found in any page. `make eval-answers label=<name>
-workers=8` reproduces a row in about five minutes for ≈ $0.20 of
+7 of 200 quotes were dropped as not found in any page. The last row is
+the latency fix: at the provider's default reasoning effort **85–94 % of
+the output tokens were reasoning**, and latency tracks output tokens at
+≈ 10 ms each; `low` cut the mean answer time by 63 % and the run's cost by
+39 % with fact recall and citation precision inside noise. What it cost:
+citation recall −0.04, because the model copies quotes less carefully
+(14 dropped instead of 7: passages abridged with `...`, mixed-language
+splices) — queued as prompt work. `make eval-answers label=<name>
+workers=8` reproduces a row in about three minutes for ≈ $0.18 of
 `gpt-5-mini`.
 
 ## Engineering practices
@@ -273,6 +299,7 @@ Copy `.env.example` to `.env`. Only the two API keys are required.
 | `GEMINI_API_KEY`          | —                        | Embeddings (`gemini-embedding-001`) and the fallback LLM. **Required.**           |
 | `LLM_MODEL`               | `openai:gpt-5-mini`      | Any PydanticAI model string; `openai:` is the Responses API, `openai-chat:` Chat Completions. |
 | `LLM_FALLBACK_MODEL`      | `google:gemini-3.5-flash` | Tried when the primary model fails with a provider error (4xx, 5xx, connection). Blank disables the fallback. |
+| `LLM_THINKING`            | `low`                    | Reasoning effort of the LLM (`minimal`, `low`, `medium`, `high`, `xhigh`, `off`; blank keeps the provider default). Applies to the primary and the fallback model. At the provider default reasoning tokens were 85–94 % of the output and most of the latency; `low` cut the mean answer time by more than half on the eval. |
 | `EMBEDDING_MODEL`         | `google:gemini-embedding-001` | `google:gemini-embedding-001` (the measured best, see the scoreboard), `openai:text-embedding-3-small` or `openai:text-embedding-3-large`; changing the model requires re-indexing (delete the collection, the store refuses a mismatched one). |
 | `RETRIEVAL_K`             | `5`                      | Chunks per retrieval (seed and tool calls).                                       |
 | `AGENT_MAX_TOOL_ROUNDS`   | `3`                      | Cap on `query_knowledge` rounds per question; `0` disables the tool.              |

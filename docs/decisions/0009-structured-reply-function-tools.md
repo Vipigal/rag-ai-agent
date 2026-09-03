@@ -36,6 +36,13 @@ sources:
 > is gone. The structured reply, the function-derived tools and the XML
 > context in a system message stand.
 
+> **Amended by [Decision 0014](/docs/decisions/0014-error-semantics-and-startup-validation.md)**
+> (2026-09-02): a reply that violates the schema is no longer a deliberate
+> 500 — the adapter requests the model once more and, if the second reply
+> is malformed too, raises `UnexpectedModelBehavior`, which the API maps to
+> a 502 naming the model. Strict native output and the validation back
+> into the dataclass stand.
+
 [Decision 0008](/docs/decisions/0008-question-agent-baseline.md) fixed how
 the agent reports what grounds its answer: the model writes `[i]`
 markers inline, refuses with a `NO_ANSWER` sentinel, and declares its one

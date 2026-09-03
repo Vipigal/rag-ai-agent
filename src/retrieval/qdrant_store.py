@@ -14,6 +14,10 @@ from domain.models import Chunk, RetrievedChunk
 MAX_FLOATS_PER_UPSERT = 750_000
 
 
+class IncompatibleCollection(ValueError):
+    pass
+
+
 class QdrantVectorStore:
     def __init__(
         self,
@@ -103,12 +107,12 @@ class QdrantVectorStore:
 def _require_compatible(client: QdrantClient, collection: str, vector_size: int) -> None:
     params = client.get_collection(collection).config.params.vectors
     if not isinstance(params, VectorParams) or params.multivector_config is None:
-        raise ValueError(
+        raise IncompatibleCollection(
             f"collection '{collection}' was created without multivector support; "
             "delete it so it is recreated with one vector per unit"
         )
     if params.size != vector_size:
-        raise ValueError(
+        raise IncompatibleCollection(
             f"collection '{collection}' holds {params.size}-dimensional vectors but the "
             f"configured embedding model produces {vector_size}; delete it so it is recreated"
         )

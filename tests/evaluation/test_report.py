@@ -358,7 +358,7 @@ def test_render_colors_deltas_like_pytest() -> None:
 
 
 SETTINGS = AnswerSettings(
-    llm_model="openai:gpt-5-mini", tool_enabled=True, max_tool_rounds=3, workers=4
+    llm_model="openai:gpt-5-mini", tool_enabled=True, max_tool_rounds=3, workers=4, thinking="low"
 )
 FULL_HIT = CaseResult(
     case_id="x",
@@ -397,7 +397,15 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
                 answer=Answer(
                     text="O grau é IP55.",
                     references=[cited],
-                    usage=Usage(requests=2, tool_calls=1, input_tokens=6412, cache_read_tokens=2304, output_tokens=812),
+                    usage=Usage(
+                        requests=2,
+                        tool_calls=1,
+                        input_tokens=6412,
+                        cache_read_tokens=2304,
+                        output_tokens=812,
+                        reasoning_tokens=640,
+                        cost_usd=0.0030,
+                    ),
                     unmatched_citations=["uma passagem que o modelo inventou"],
                 ),
                 latency_ms=6821.44,
@@ -411,7 +419,7 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
             answer=AnswerRun(
                 answer=Answer(
                     text="Não há.", references=[], has_answer=False,
-                    usage=Usage(requests=1, input_tokens=2000, output_tokens=50),
+                    usage=Usage(requests=1, input_tokens=2000, output_tokens=50, cost_usd=0.0004),
                 ),
                 latency_ms=3000.0,
             ),
@@ -441,6 +449,7 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
         "tool_enabled": True,
         "max_tool_rounds": 3,
         "workers": 4,
+        "thinking": "low",
         "gates": {
             "fact_recall": 0.5, "fact_cases": 2,
             "citation_precision": 0.5, "citation_recall": 0.5,
@@ -454,8 +463,12 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
             "usage": {
                 "requests": 3, "tool_calls": 1, "input_tokens": 8412,
                 "cache_read_tokens": 2304, "output_tokens": 862,
+                "reasoning_tokens": 640, "cost_usd": 0.0034,
             },
-            "per_question": {"requests": 1.5, "input_tokens": 4206.0, "output_tokens": 431.0},
+            "per_question": {
+                "requests": 1.5, "input_tokens": 4206.0, "output_tokens": 431.0,
+                "reasoning_tokens": 320.0, "cost_usd": 0.0017,
+            },
         },
         "slices": {
             "persona": {"operator": block},
@@ -480,6 +493,7 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
         "usage": {
             "requests": 2, "tool_calls": 1, "input_tokens": 6412,
             "cache_read_tokens": 2304, "output_tokens": 812,
+            "reasoning_tokens": 640, "cost_usd": 0.003,
         },
         "error": None,
     }
@@ -509,7 +523,9 @@ def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer()
     }
 
 
-def _answers_block(fact_recall: float = 0.72, errors: int = 0) -> dict:
+def _answers_block(
+    fact_recall: float = 0.72, errors: int = 0, latency_mean: float = 6800.0, cost: float = 0.2134
+) -> dict:
     slice_block = {
         "cases": 8, "fact_recall": 0.75, "citation_precision": 0.7, "citation_recall": 0.88,
         "false_refusal_rate": 0.0,
@@ -519,6 +535,7 @@ def _answers_block(fact_recall: float = 0.72, errors: int = 0) -> dict:
         "tool_enabled": True,
         "max_tool_rounds": 3,
         "workers": 4,
+        "thinking": "low",
         "gates": {
             "fact_recall": fact_recall, "fact_cases": 57,
             "citation_precision": 0.61, "citation_recall": 0.79,
@@ -529,12 +546,16 @@ def _answers_block(fact_recall: float = 0.72, errors: int = 0) -> dict:
             "requires_image": {"fact_recall": 0.0, "citation_precision": 0.5, "citation_recall": 0.5},
         },
         "efficiency": {
-            "latency_ms": {"mean": 6800.0, "p95": 14200.0},
+            "latency_ms": {"mean": latency_mean, "p95": 14200.0},
             "usage": {
                 "requests": 158, "tool_calls": 65, "input_tokens": 498000,
                 "cache_read_tokens": 121000, "output_tokens": 112000,
+                "reasoning_tokens": 98000, "cost_usd": cost,
             },
-            "per_question": {"requests": 1.7, "input_tokens": 5400.0, "output_tokens": 1200.0},
+            "per_question": {
+                "requests": 1.7, "input_tokens": 5400.0, "output_tokens": 1200.0,
+                "reasoning_tokens": 1054.0, "cost_usd": 0.0023,
+            },
         },
         "slices": {"persona": {}, "language": {}, "category": {}, "document": {"LB5001.pdf": slice_block}},
     }
@@ -554,7 +575,8 @@ def test_render_with_answers_appends_the_answer_sections() -> None:
     assert "ANSWERS BY DOCUMENT" in output
     assert "ANSWER DIAG   false_refusal 0.06 · errors 0 · unmatched quotes 3 · requires_image (2): fact_recall 0.00" in output
     assert "answer latency: mean 6.8 s · p95 14.2 s (4 workers) · llm calls 158 · tool calls 65" in output
-    assert "tokens: in 498.0k (cached 121.0k) · out 112.0k · per question in 5.4k / out 1.2k" in output
+    assert "tokens: in 498.0k (cached 121.0k) · out 112.0k (reasoning 98.0k) · per question in 5.4k / out 1.2k" in output
+    assert "cost: $0.21 · per question $0.0023" in output
 
 
 def test_render_without_answers_prints_no_answer_sections() -> None:
@@ -566,7 +588,7 @@ def test_render_without_answers_prints_no_answer_sections() -> None:
 def test_render_answer_deltas_only_against_a_previous_run_with_answers() -> None:
     current, previous = _payload(), _payload()
     current["answers"] = _answers_block(fact_recall=0.72)
-    previous["answers"] = _answers_block(fact_recall=0.67)
+    previous["answers"] = _answers_block(fact_recall=0.67, latency_mean=16000.0, cost=0.30)
     retrieval_only = _payload()
     retrieval_only["answers"] = None
 
@@ -575,8 +597,22 @@ def test_render_answer_deltas_only_against_a_previous_run_with_answers() -> None
 
     assert "0.72 (+0.05)" in with_deltas
     assert "0.88 (=)" in with_deltas
+    assert "answer latency: mean 6.8 s (-9.2 s) · p95 14.2 s (=)" in with_deltas
+    assert "cost: $0.21 (-$0.09) · per question $0.0023" in with_deltas
     assert "previous run has no answer layer — answer deltas omitted" in without
     assert "0.72 (+" not in without
+    assert "mean 6.8 s · p95 14.2 s" in without
+
+
+def test_render_paints_lower_latency_and_cost_green() -> None:
+    current, previous = _payload(), _payload()
+    current["answers"] = _answers_block()
+    previous["answers"] = _answers_block(latency_mean=16000.0, cost=0.30)
+
+    output = render(current, compare=previous, compare_name="a.json", color=True)
+
+    assert "\x1b[32m(-9.2 s)\x1b[0m" in output
+    assert "\x1b[32m(-$0.09)\x1b[0m" in output
 
 
 def test_render_paints_errors_red_only_when_present() -> None:

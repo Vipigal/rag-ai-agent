@@ -76,6 +76,8 @@ class Usage:
     input_tokens: int = 0
     cache_read_tokens: int = 0
     output_tokens: int = 0
+    reasoning_tokens: int = 0
+    cost_usd: float = 0.0
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
@@ -84,6 +86,8 @@ class Usage:
             input_tokens=self.input_tokens + other.input_tokens,
             cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
+            reasoning_tokens=self.reasoning_tokens + other.reasoning_tokens,
+            cost_usd=self.cost_usd + other.cost_usd,
         )
 
 

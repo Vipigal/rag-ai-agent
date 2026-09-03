@@ -13,6 +13,7 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-google:gemini-embedding-001}
       LLM_MODEL: ${LLM_MODEL:-openai:gpt-5-mini}
       LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-google:gemini-3.5-flash}
+      LLM_THINKING: ${LLM_THINKING:-low}
       RETRIEVAL_K: ${RETRIEVAL_K:-5}
       AGENT_MAX_TOOL_ROUNDS: ${AGENT_MAX_TOOL_ROUNDS:-3}
       QUERY_KNOWLEDGE_ENABLED: ${QUERY_KNOWLEDGE_ENABLED:-true}

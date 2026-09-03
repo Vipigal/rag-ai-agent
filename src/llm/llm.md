@@ -1,10 +1,10 @@
 ---
 type: Module
 title: LLM Module
-description: The LLM port's adapter stage — PydanticAiLLM over pydantic_ai.direct, one provider call per complete() that offers function-derived strict tools and demands the AgentReply schema as native structured output — and what its code cannot say: the sync-only constraint that keeps the question route a plain def, schema derivation and validation with TypeAdapter, message grouping and tool_name-by-id resolution, which exceptions reach the API edge as 502 versus 500, that openai: resolves to the Responses API, the FallbackModel wiring and why gemini-3.5-flash is the fallback, and how to test against FunctionModel.
-tags: [llm, adapter, pydantic-ai, structured-output, tool-calling, provider-errors]
+description: The LLM port's adapter stage — PydanticAiLLM over pydantic_ai.direct, one provider call per complete() that offers function-derived strict tools, demands the AgentReply schema as native structured output and carries the model settings the composition root chose — and what its code cannot say: the sync-only constraint that keeps the question route a plain def, schema derivation and validation with TypeAdapter, message grouping and tool_name-by-id resolution, which exceptions reach the API edge as 502 versus 500, that openai: resolves to the Responses API, the FallbackModel wiring and why gemini-3.5-flash is the fallback, why the thinking level is low by default (reasoning tokens were 85–94 % of the output and the whole latency), how usage carries reasoning tokens and a priced cost, why a malformed reply is requested once more before it becomes a 502 and where every exception class lands at the API edge, and how to test against FunctionModel.
+tags: [llm, adapter, pydantic-ai, structured-output, tool-calling, provider-errors, thinking, latency, cost]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:30:26Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T02:46:00Z }
 sources:
   - id: spec
@@ -73,13 +73,20 @@ strict=True).tool_def` reads the function's signature and docstring:
   runtime data, not a comment. A tool without type hints or with a
   parameter griffe cannot describe still works; it just ships a poorer
   schema.
-- **A response that violates the reply schema raises.** With strict
-  native output the provider guarantees the JSON matches the schema, so a
-  `ValidationError` (a `ValueError`) from `validate_json` means a
-  provider or configuration bug, not user input. It is deliberately
-  **not** mapped to 502 — it surfaces as a 500 so it is investigated, not
-  retried. A response carrying tool calls is never parsed as a reply,
-  whatever text it also carries.
+- **A response that violates the reply schema is requested once more,
+  then rejected as the model's fault.** With strict native output the
+  provider guarantees the JSON matches the schema, yet the answer eval saw
+  one malformed reply in 93 (trailing characters after the object), so
+  `complete()` loops over `MAX_REPLY_ATTEMPTS = 2`: a `ValidationError`
+  from `validate_json` on the first attempt sends the same request again;
+  on the second it raises `pydantic_ai.exceptions.UnexpectedModelBehavior`
+  with the offending text as `body`, which the API maps to
+  **502 "LLM reply unusable: …"** ([Decision 0014](/docs/decisions/0014-error-semantics-and-startup-validation.md),
+  reversing the deliberate 500 of Decision 0009). Both attempts count in
+  `Usage`. A response carrying tool calls is never parsed as a reply,
+  whatever text it also carries. The unreachable case in which the model
+  still requests tools after the cap is `domain.errors.ToolRoundsExhausted`,
+  also a 502.
 - **`openai:` means the Responses API.** In pydantic-ai 2.37.0
   `infer_model("openai:<name>")` resolves to `OpenAIResponsesModel`, not
   Chat Completions (verified locally, 2026-09-01). The default
@@ -94,9 +101,14 @@ strict=True).tool_def` reads the function's signature and docstring:
   `complete()`, not when `PydanticAiLLM` is constructed. A missing
   `OPENAI_API_KEY` or an unknown provider prefix (`nonexistent:model`)
   raises `pydantic_ai.exceptions.UserError` — a `RuntimeError`, **not** a
-  `ModelAPIError` — so it surfaces as a **500 on the first question**,
-  not at startup and not as a 502. Configuration errors are 500 on
-  purpose; only upstream provider failures are 502 (next item).
+  `ModelAPIError`. Since Decision 0014 it no longer reaches a question:
+  `validate_configuration()` at the composition root builds the LLM inside
+  the FastAPI lifespan, so a missing key or an unknown prefix fails the
+  **startup** with the message in the `make up` terminal (and before that,
+  `make check-env` refuses an empty key). Should a `UserError` still
+  surface at request time, `api/errors.py` answers **503 "provider not
+  configured: …"** with `GOOGLE_API_KEY` rewritten to the `GEMINI_API_KEY`
+  the README documents (pydantic-ai's `GoogleProvider` accepts both).
 - **Which exceptions reach the API edge as 502.** PydanticAI's OpenAI
   models wrap the SDK's `APIStatusError` (status ≥ 400) into
   `ModelHTTPError` and `APIConnectionError` into `ModelAPIError`;
@@ -107,8 +119,13 @@ strict=True).tool_def` reads the function's signature and docstring:
   `ModelAPIError` — so a third handler answers 502 listing each model's
   error ("every LLM provider failed: …"). The `openai.OpenAIError`
   handler stays for SDK errors that escape unwrapped (the query embedding
-  now runs through pydantic-ai's `Embedder`). Three handlers, same
-  status.
+  now runs through pydantic-ai's `Embedder`). Google's model and embedding
+  adapters wrap `genai.errors.APIError` into `ModelHTTPError` too, so the
+  fallback provider needs no handler of its own. The full map — 422 for
+  the request, 502 for providers and unusable replies, 503 for the vector
+  store and the configuration, 500 only as a catch-all that names the
+  exception — is `register_exception_handlers` in `src/api/errors.py`
+  (Decision 0014).
 - **Message grouping.** PydanticAI histories alternate `ModelRequest`
   (system/user/tool-return parts) and `ModelResponse` (text/tool-call
   parts). The adapter folds every run of consecutive request-side domain
@@ -151,6 +168,43 @@ strict=True).tool_def` reads the function's signature and docstring:
   and `gemini-3.5-flash-lite` returned 503 "high demand" at the time, the
   very failure the fallback exists for. The fallback needs
   `GEMINI_API_KEY`, which the default embedder requires anyway.
+- **The thinking level is a setting, chosen at the composition root, low
+  by default.** `PydanticAiLLM(model, settings=ModelSettings(thinking=…))`
+  forwards the settings to every `model_request_sync`; `build_llm()` in
+  `api/composition.py` reads **`LLM_THINKING`** (`minimal`, `low`,
+  `medium`, `high`, `xhigh`, `off`; blank keeps the provider default;
+  anything else is rejected naming the choices) and both the route and
+  the eval build the LLM through it, so a run measures what the API
+  ships. pydantic-ai's unified `thinking` field is what makes one knob
+  cover the fallback: `Model.prepare_request` strips it from the settings
+  and puts it on `ModelRequestParameters.thinking` **only when the
+  model's profile says `supports_thinking`** — `gpt-5-mini` becomes
+  `reasoning.effort` on the Responses API, `gemini-3.5-flash` a
+  `thinking_level`; a model without support ignores it silently (profiles
+  checked 2026-09-02: `gpt-5*` and `gemini-3.5-flash*` support it,
+  `gpt-4o` does not). Why low: measured 2026-09-02 on the answer eval,
+  latency correlates 0.92 with output tokens at ≈ 10.6 ms per token, and
+  at the provider default (medium) **reasoning tokens were 85–94 % of the
+  output** — the 23 s case spent 1,920 of its 2,048 output tokens
+  reasoning to quote 130. The same three questions: default 6.5 / 12.0 /
+  23.6 s, `low` 4.4 / 3.1 / 5.2 s, `minimal` 2.6 / 2.6 / 5.1 s — but
+  `minimal` produced a number that was not in the table on one of them,
+  so `low` is the default and the answer eval decides (see the
+  [findings](/evals/results/experiment-findings.md)). Quotes, retrieval
+  (≈ 0.5 s, the Gemini query embedding) and the 4–5 k input tokens were
+  ruled out as causes.
+- **Usage carries reasoning tokens and a priced cost.** `_to_usage` reads
+  `response.usage.details["reasoning_tokens"]` (OpenAI) plus
+  `["thoughts_tokens"]` (Google) into `Usage.reasoning_tokens` — they are
+  already inside `output_tokens`, this only names them — and prices the
+  response with `ModelResponse.cost()`, pydantic-ai's binding of
+  **genai-prices** (`total_price`, input discounted for cache reads, as
+  `Usage.cost_usd`). A model the price table does not know
+  (`LookupError`; `FunctionModel` in tests) costs `0.0` rather than
+  failing the request, and a response without `model_name` is not priced.
+  Embedding calls are not in the domain's `Usage` and are not priced —
+  their per-question cost is measured separately in the findings and is
+  three orders of magnitude below the LLM's.
 
 # How to test the adapter
 
@@ -168,6 +222,14 @@ in TDD (2026-09-01/02):
   equality**, so `assert request.parts == [SystemPromptPart(...)]` is
   flaky. Assert `isinstance` plus `.content` / `(tool_name, content,
 tool_call_id)`. `ToolCallPart` has no timestamp and compares cleanly.
+- **`FunctionModel` stamps its own `model_name` and needs a profile to
+  route `thinking`.** It overwrites `response.model_name` with
+  `function:<fn>:` (pass `model_name="gpt-5-mini"` to test pricing) and its
+  default profile has `supports_thinking=False`, so the unified setting is
+  dropped before the function sees it — give it
+  `ModelProfile(supports_json_schema_output=True,
+  supports_json_object_output=True, supports_thinking=True)` and assert on
+  `AgentInfo.model_request_parameters.thinking`, not on `model_settings`.
 - **`FunctionModel` runs no OpenAI transformer.** The output schema it
   sees is Pydantic's raw one (with `title` keys and no
   `additionalProperties`); the strict rewrite happens only in the OpenAI

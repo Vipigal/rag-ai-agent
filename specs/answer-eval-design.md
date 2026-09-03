@@ -4,7 +4,7 @@ title: Answer Eval — Design & Implementation Plan
 description: Approved design for the harness's answer layer — the minimal increment that makes the tool-on/off and model-choice evals runnable. Deterministic gates (fact recall, citation precision/recall, refusal rate) and efficiency (end-to-end latency, token usage) over AgentService.answer() in-process behind an opt-in --answers flag with a thread-pool of workers; the per-case results JSON doubles as the owner's judging panel in place of an LLM judge. Records the measured cost analysis, the fact-normalization rules, the error semantics, the Usage/has_answer additions to the domain, and the ordered TDD plan.
 tags: [evals, harness, answers, citations, facts, refusal, usage, cost, design, spec]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:20:43Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 sources:
   - id: harness-spec
     resource: /specs/eval-harness-design.md
@@ -534,10 +534,22 @@ its reason:
   same thread-pool shape, so the fix is not eval-only. The LLM adapter is
   unchanged until a failure is measured. See the [Retrieval
   Module](/src/retrieval/retrieval.md).
-- **The runner mirrors production wiring**: `PydanticAiLLM(llm_model())`,
-  i.e. `LLM_MODEL` behind `LLM_FALLBACK_MODEL`, not the bare model name.
-  The run info records `llm_model` only; a run in which the fallback
-  actually answered would show its provider's latency, not an `error`.
+- **The runner mirrors production wiring**: since 2026-09-02 through the
+  composition root's `build_llm()` — `LLM_MODEL` behind
+  `LLM_FALLBACK_MODEL` with the `LLM_THINKING` settings — not the bare
+  model name. The run info records `llm_model` and `thinking`; a run in
+  which the fallback actually answered would show its provider's latency,
+  not an `error`.
+- **`Usage` gained `reasoning_tokens` and `cost_usd`** (2026-09-02, the
+  latency investigation): the adapter names the reasoning share of
+  `output_tokens` from the provider's `usage.details` and prices each
+  response with genai-prices through `ModelResponse.cost()`; the console's
+  `tokens:` line shows `out … (reasoning …)`, a `cost:` line shows the run
+  total and the per-question mean, and the `EFFICIENCY` lines compare
+  latency and cost against the previous run with lower painted green.
+  The design's cost analysis (≈ $0.19–0.35 per run, estimated with
+  tiktoken) is now measured: $0.18 at `low` effort, ≈ $0.29 at the
+  provider default.
 - **Progress is logged per case** (`<id>: answered in N s (M request(s))`,
   `<id>: error after N s: …`) through the stdlib logger, with the httpx
   request logs silenced. Without it the first attempt ran silent for ten
