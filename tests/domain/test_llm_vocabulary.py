@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from domain.models import AgentReply, Answer, Chunk, Completion, Message, RetrievedChunk, ToolCall
+from domain.models import AgentReply, Answer, Chunk, Completion, Message, Reference, ToolCall, Usage
 
 
 def _chunk(text: str) -> Chunk:
@@ -53,7 +53,7 @@ def test_completion_carries_either_a_final_reply_or_a_tool_requesting_message():
 
 def test_vocabulary_entities_are_immutable():
     reply = AgentReply(answer="2.3 kW", citations=[], has_answer=True)
-    answer = Answer(text="2.3 kW", references=[RetrievedChunk(chunk=_chunk("2.3 kW"), score=0.9)])
+    answer = Answer(text="2.3 kW", references=[Reference(chunk=_chunk("2.3 kW"), quote="2.3 kW")])
 
     with pytest.raises(FrozenInstanceError):
         setattr(reply, "answer", "changed")
@@ -61,11 +61,35 @@ def test_vocabulary_entities_are_immutable():
         setattr(answer, "text", "changed")
 
 
-def test_answer_references_keep_the_structured_retrieved_chunks():
-    retrieved = RetrievedChunk(chunk=_chunk("2.3 kW"), score=0.9, retrieval_source="tool")
+def test_answer_references_pair_the_quoted_passage_with_its_chunk_and_source():
+    reference = Reference(chunk=_chunk("The motor draws 2.3 kW."), quote="draws 2.3 kW", retrieval_source="tool")
 
-    answer = Answer(text="The motor draws 2.3 kW.", references=[retrieved])
+    answer = Answer(text="The motor draws 2.3 kW.", references=[reference])
 
     assert answer.references[0].chunk.filename == "manual.pdf"
     assert answer.references[0].chunk.page == 3
+    assert answer.references[0].quote == "draws 2.3 kW"
     assert answer.references[0].retrieval_source == "tool"
+    assert Reference(chunk=_chunk("x"), quote="x").retrieval_source == "seed"
+    assert answer.unmatched_citations == []
+
+
+def test_usage_defaults_to_zero_and_adds_field_wise():
+    first = Usage(requests=1, input_tokens=2300, output_tokens=140)
+    second = Usage(requests=1, tool_calls=1, input_tokens=4100, cache_read_tokens=2200, output_tokens=160)
+
+    assert Usage() == Usage(requests=0, tool_calls=0, input_tokens=0, cache_read_tokens=0, output_tokens=0)
+    assert first + second == Usage(
+        requests=2, tool_calls=1, input_tokens=6400, cache_read_tokens=2200, output_tokens=300
+    )
+
+
+def test_completion_and_answer_carry_usage_and_the_answer_a_refusal_flag_with_defaults():
+    completion = Completion(message=Message(role="assistant", content="{…}"), reply=None)
+    answer = Answer(text="2.3 kW", references=[])
+
+    assert completion.usage == Usage()
+    assert answer.usage == Usage()
+    assert answer.has_answer is True
+    assert answer.unmatched_citations == []
+    assert Answer(text="Não sei.", references=[], has_answer=False).has_answer is False

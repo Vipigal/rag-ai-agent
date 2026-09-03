@@ -82,8 +82,9 @@ def get_qdrant_client() -> QdrantClient:
 def get_embedder() -> PydanticAiEmbeddingModel:
     model = embedding_model_name()
     provider = model.split(":", 1)[0]
+    settings = EmbeddingSettings(dimensions=embedding_dimensions())
     return PydanticAiEmbeddingModel(
-        Embedder(model, settings=EmbeddingSettings(dimensions=embedding_dimensions())),
+        lambda: Embedder(model, settings=settings),
         max_batch=EMBEDDING_BATCH_SIZES[provider],
     )
 
@@ -106,11 +107,11 @@ def build_ingestion_service(store: QdrantVectorStore) -> IngestionPipelineServic
     )
 
 
-def build_agent_service(retriever: Retriever, llm: LLM) -> AgentService:
+def build_agent_service(retriever: Retriever, llm: LLM, k: int | None = None) -> AgentService:
     return AgentService(
         retriever=retriever,
         llm=llm,
-        k=retrieval_k(),
+        k=retrieval_k() if k is None else k,
         max_tool_rounds=agent_max_tool_rounds(),
         tool_enabled=query_knowledge_enabled(),
     )

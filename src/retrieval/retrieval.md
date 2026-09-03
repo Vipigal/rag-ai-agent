@@ -4,7 +4,7 @@ title: Retrieval Module
 description: The read side's adapters — PydanticAiEmbeddingModel over pydantic-ai's Embedder (OpenAI or Google behind one EMBEDDING_MODEL value, documents and queries embedded with their task types, batched per provider), QdrantVectorStore holding one multivector point per chunk scored by MaxSim (upserts batched under Qdrant's JSON limit, incompatible collections refused with the fix named) and VectorRetriever, the one Retriever strategy — with what the code cannot say: why the query is a one-row multivector, why the vector size is a registry at the composition root, what switching the embedder costs, the measured numbers, and how to test all of it without Docker.
 tags: [retrieval, qdrant, multivector, embeddings, pydantic-ai, vector-store, retriever]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T18:10:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:19:48Z }
 verified: { by: human:vinicius, at: 2026-09-02T19:02:00Z }
 sources:
   - id: decision-0005
@@ -41,7 +41,7 @@ kept and searched, per [Decision 0012](/docs/decisions/0012-page-chunks-unit-vec
 
 # The embedder adapter — one library, one config value
 
-- `PydanticAiEmbeddingModel(embedder, max_batch)` wraps pydantic-ai's
+- `PydanticAiEmbeddingModel(make_embedder, max_batch)` wraps pydantic-ai's
   `Embedder`.[^pydantic-ai-embeddings] `embed_documents` calls
   `embed_sync(batch, input_type="document")` in slices of `max_batch`;
   `embed_query` calls `embed_sync(text, input_type="query")`. For Google
@@ -61,6 +61,17 @@ kept and searched, per [Decision 0012](/docs/decisions/0012-page-chunks-unit-vec
   `text-embedding-3-small` — fails with the supported list in the message.
 - One instance, cached at the composition root, embeds both the chunks'
   units and the queries (architecture rule 8); the eval harness reuses it.
+- **One `Embedder` per thread.** The adapter takes a factory and builds
+  the `Embedder` lazily in a `threading.local`. Measured 2026-09-02:
+  `embed_sync` runs an event loop per thread, while a shared `Embedder`
+  holds one async Google client; under six concurrent threads — the sync
+  `/question` route in FastAPI's thread pool, or the eval's `--workers` —
+  one call in twelve failed with `RuntimeError: <asyncio.locks.Event> is
+  bound to a different event loop`. With a client per thread, 18 of 18
+  passed. The LLM adapter shares its `FallbackModel` the same way and
+  passed 24 of 24 in the same spike, so it stays as is until a failure is
+  measured. The fully async path the owner intends removes the hazard,
+  and the thread-local with it.
 - Provider errors: pydantic-ai wraps them as `ModelAPIError`, mapped to
   502 at the API edge; the older `openai.OpenAIError` handler stays for SDK
   errors that escape unwrapped.
@@ -130,7 +141,8 @@ changes the store's shape.
   collection refusals (a single-vector collection, another size).
 - The embedder adapter: `pydantic_ai.embeddings.test.TestEmbeddingModel`
   subclassed to record calls — batching order, the `document`/`query`
-  input types, and that an empty list makes no provider call
+  input types, that an empty list makes no provider call, and that the
+  factory runs once per thread
   (`tests/retrieval/test_pydantic_ai_embedder.py`).
 - The retriever: fakes of both ports. Embedding _accuracy_ belongs to the
   evals (`make eval`), never to unit tests.

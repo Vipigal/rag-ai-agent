@@ -26,5 +26,5 @@ def ask_question(
     answer = service.answer(request.question)
     return QuestionResponse(
         answer=answer.text,
-        references=[reference.chunk.text for reference in answer.references],
+        references=[reference.quote for reference in answer.references],
     )

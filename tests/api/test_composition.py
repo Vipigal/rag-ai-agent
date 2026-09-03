@@ -68,7 +68,7 @@ def clean_env(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_defaults_retrieve_five_and_offer_the_query_knowledge_tool():
-    retriever, llm = FakeRetriever(), FakeLLM([final("Polyrex", ["c1"])])
+    retriever, llm = FakeRetriever(), FakeLLM([final("Polyrex", ["Mobil Polyrex EM"])])
 
     build_agent_service(retriever, llm).answer(QUESTION)
 
@@ -79,7 +79,7 @@ def test_defaults_retrieve_five_and_offer_the_query_knowledge_tool():
 def test_env_knobs_override_k_and_disable_the_tool(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("RETRIEVAL_K", "2")
     monkeypatch.setenv("QUERY_KNOWLEDGE_ENABLED", "false")
-    retriever, llm = FakeRetriever(), FakeLLM([final("Polyrex", ["c1"])])
+    retriever, llm = FakeRetriever(), FakeLLM([final("Polyrex", ["Mobil Polyrex EM"])])
 
     build_agent_service(retriever, llm).answer(QUESTION)
 
@@ -89,7 +89,7 @@ def test_env_knobs_override_k_and_disable_the_tool(monkeypatch: pytest.MonkeyPat
 
 def test_env_knob_caps_the_tool_rounds(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AGENT_MAX_TOOL_ROUNDS", "1")
-    llm = FakeLLM([tool_request("grease"), final("Polyrex", ["c1"])])
+    llm = FakeLLM([tool_request("grease"), final("Polyrex", ["Mobil Polyrex EM"])])
     retriever = FakeRetriever()
 
     build_agent_service(retriever, llm).answer(QUESTION)
@@ -147,3 +147,12 @@ def test_blank_fallback_model_disables_the_fallback(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("LLM_FALLBACK_MODEL", "  ")
 
     assert llm_model() == "openai:gpt-5-mini"
+
+
+def test_an_explicit_k_overrides_the_env_knob(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("RETRIEVAL_K", "2")
+    retriever, llm = FakeRetriever(), FakeLLM([final("Polyrex", ["Mobil Polyrex EM"])])
+
+    build_agent_service(retriever, llm, k=3).answer(QUESTION)
+
+    assert retriever.calls == [(QUESTION, 3)]

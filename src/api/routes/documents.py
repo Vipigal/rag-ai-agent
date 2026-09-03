@@ -16,13 +16,13 @@ class DocumentsResponse(BaseModel):
 
 
 @router.post("/documents", response_model=DocumentsResponse)
-async def upload_documents(
+def upload_documents(
     files: list[UploadFile],
     service: Annotated[IngestionPipelineService, Depends(get_ingestion_service)],
 ) -> DocumentsResponse:
     contents: list[tuple[str, bytes]] = []
     for file in files:
-        data = await file.read()
+        data = file.file.read()
         if not data.startswith(b"%PDF"):
             raise HTTPException(
                 status_code=422,

@@ -10,14 +10,15 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.usage import RequestUsage
 
-from domain.models import AgentReply, Completion, Message, ToolCall
+from domain.models import AgentReply, Completion, Message, ToolCall, Usage
 from llm.pydantic_ai_llm import PydanticAiLLM
 
 SYSTEM = Message(role="system", content="Answer from the chunks.")
 CONTEXT = Message(role="system", content='<chunks>\n<chunk id="c1" …>\n</chunks>')
 USER = Message(role="user", content="power?")
-REPLY_JSON = '{"answer": "2.3 kW", "citations": ["c1"], "has_answer": true}'
+REPLY_JSON = '{"answer": "2.3 kW", "citations": ["the motor draws 2.3 kW"], "has_answer": true}'
 
 
 def query_knowledge(query: str) -> str:
@@ -110,10 +111,8 @@ def test_a_json_text_response_becomes_a_validated_reply():
 
     completion = llm.complete([SYSTEM, USER], [query_knowledge])
 
-    assert completion == Completion(
-        message=Message(role="assistant", content=REPLY_JSON),
-        reply=AgentReply(answer="2.3 kW", citations=["c1"], has_answer=True),
-    )
+    assert completion.message == Message(role="assistant", content=REPLY_JSON)
+    assert completion.reply == AgentReply(answer="2.3 kW", citations=["the motor draws 2.3 kW"], has_answer=True)
 
 
 def test_a_response_violating_the_reply_schema_is_rejected():
@@ -180,3 +179,18 @@ def test_tool_message_answering_no_known_call_is_rejected_before_reaching_the_pr
         llm.complete([SYSTEM, USER, orphan], [])
 
     assert provider.messages == []
+
+
+def test_provider_usage_is_reported_as_one_request_with_its_token_counts():
+    llm, _ = make_llm(
+        ModelResponse(
+            parts=[TextPart(REPLY_JSON)],
+            usage=RequestUsage(input_tokens=2300, cache_read_tokens=1024, output_tokens=140),
+        )
+    )
+
+    completion = llm.complete([SYSTEM, USER], [])
+
+    assert completion.usage == Usage(
+        requests=1, input_tokens=2300, cache_read_tokens=1024, output_tokens=140
+    )

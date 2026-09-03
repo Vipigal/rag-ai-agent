@@ -4,7 +4,7 @@ title: 0009 — Structured agent reply, function-derived tools, chunk ids as cit
 description: The agent's final answer is a provider-enforced structured output (AgentReply with answer, citations as chunk ids, has_answer) instead of the [i]/NO_ANSWER text protocol; tools are Python functions whose schema the adapter derives, replacing the hand-written ToolSpec; the numbered-excerpt registry is gone — chunk ids are the citation handles; retrieved chunks reach the model as an XML-rendered system message, not inside the user turn.
 tags: [agent, llm, structured-output, tools, citations, prompt, pydantic-ai]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:18:30Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:53:05Z }
 verified: { by: human:vinicius, at: 2026-09-02T02:40:00Z }
 sources:
   - id: decision-0008
@@ -28,6 +28,13 @@ sources:
 ---
 
 # Context
+
+> **Amended by [Decision 0013](/docs/decisions/0013-citations-as-quotes.md)**
+> (2026-09-02): citations are no longer chunk ids but passages quoted
+> verbatim from the chunks, resolved by containment; the `id` attribute
+> left the `<chunk>` rendering and the seed fallback for uncited answers
+> is gone. The structured reply, the function-derived tools and the XML
+> context in a system message stand.
 
 [Decision 0008](/docs/decisions/0008-question-agent-baseline.md) fixed how
 the agent reports what grounds its answer: the model writes `[i]`

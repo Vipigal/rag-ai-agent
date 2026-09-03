@@ -12,7 +12,6 @@ from retrieval.vector_retriever import VectorRetriever
 QUESTION = "What is the power consumption of the motor?"
 POWER_TEXT = "The W22 motor requires 2.3 kW to operate at a 60 Hz line frequency."
 GREASE_TEXT = "Regrease the bearings every 8000 h with Mobil Polyrex EM."
-POWER_CHUNK_ID = chunk_id("doc-a", 1)
 
 
 class KeywordEmbedder:
@@ -69,7 +68,7 @@ def make_service(llm: CitingLLM) -> AgentService:
 
 
 def test_question_flows_through_retriever_and_store_to_a_grounded_answer():
-    llm = CitingLLM("The motor requires 2.3 kW.", [POWER_CHUNK_ID])
+    llm = CitingLLM("The motor requires 2.3 kW.", ["requires 2.3 kW to operate at a 60 Hz line frequency"])
 
     answer = make_service(llm).answer(QUESTION)
 
@@ -77,14 +76,16 @@ def test_question_flows_through_retriever_and_store_to_a_grounded_answer():
     [reference] = answer.references
     assert (reference.chunk.filename, reference.chunk.page) == ("w22-manual.pdf", 7)
     assert reference.chunk.text == POWER_TEXT
+    assert reference.quote == "requires 2.3 kW to operate at a 60 Hz line frequency"
     assert reference.retrieval_source == "seed"
-    assert f'<chunk id="{POWER_CHUNK_ID}" document="w22-manual.pdf" page="7">' in llm.seen_context
+    assert '<chunk document="w22-manual.pdf" page="7">' in llm.seen_context
     assert "<section>3.2 Electrical data</section>" in llm.seen_context
+    assert 'id="' not in llm.seen_context
 
 
-def test_http_question_returns_the_verbatim_stored_excerpt_as_reference():
+def test_http_question_returns_the_quoted_passages_as_references():
     app.dependency_overrides[get_agent_service] = lambda: make_service(
-        CitingLLM("The motor requires 2.3 kW.", [POWER_CHUNK_ID])
+        CitingLLM("The motor requires 2.3 kW.", [POWER_TEXT, "a passage the documents never contained"])
     )
     try:
         response = TestClient(app).post("/question", json={"question": QUESTION})

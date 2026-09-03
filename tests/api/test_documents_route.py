@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx2
 import openai
 import pytest
@@ -77,3 +79,21 @@ def test_embedding_provider_failure_maps_to_502(service):
 
     assert response.status_code == 502
     assert "provider" in response.json()["detail"].lower()
+
+
+def test_the_pipeline_runs_off_the_event_loop_so_sync_adapters_can_drive_their_own(service):
+    def ingest(files):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return IngestionResult(documents_indexed=1, total_chunks=9)
+        raise AssertionError("ingest() ran on the server's event loop")
+
+    service.ingest = ingest
+
+    response = TestClient(app, raise_server_exceptions=False).post(
+        "/documents", files=[("files", PDF_ONE)]
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total_chunks"] == 9

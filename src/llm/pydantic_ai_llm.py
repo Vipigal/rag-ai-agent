@@ -16,7 +16,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.output import OutputObjectDefinition
 
-from domain.models import AgentReply, Completion, Message, ToolCall
+from domain.models import AgentReply, Completion, Message, ToolCall, Usage
 from domain.ports import Tool
 
 REPLY_ADAPTER = TypeAdapter(AgentReply)
@@ -44,7 +44,7 @@ class PydanticAiLLM:
         )
         message = _to_domain_message(response)
         reply = None if message.tool_calls else REPLY_ADAPTER.validate_json(message.content)
-        return Completion(message=message, reply=reply)
+        return Completion(message=message, reply=reply, usage=_to_usage(response))
 
 
 def _to_provider_messages(messages: list[Message]) -> list[ModelMessage]:
@@ -99,4 +99,13 @@ def _to_domain_message(response: ModelResponse) -> Message:
             ToolCall(id=part.tool_call_id, name=part.tool_name, arguments=part.args_as_dict())
             for part in response.tool_calls
         ),
+    )
+
+
+def _to_usage(response: ModelResponse) -> Usage:
+    return Usage(
+        requests=1,
+        input_tokens=response.usage.input_tokens,
+        cache_read_tokens=response.usage.cache_read_tokens,
+        output_tokens=response.usage.output_tokens,
     )

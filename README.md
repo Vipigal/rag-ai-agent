@@ -64,11 +64,15 @@ the index never accumulates duplicates.
 ### Example requests and responses
 
 Real outputs from the running stack (`openai:gpt-5-mini`, the four
-manuals from `case_files/` indexed). References are shown truncated; the
-API returns the full chunk text.
+manuals from `case_files/` indexed, captured 2026-09-02). Each reference
+is a passage the model quoted verbatim from a page it read, verified by
+containment before it is returned — never a whole page.
 
-**The challenge's example question** — answered from the WEG guide's
-conceptual section, in the question's language:
+**The challenge's example question** — over a corpus of four manuals the
+question is underspecified (which motor?), and the agent behaves
+accordingly: in three consecutive runs it answered from the WEG guide's
+worked example twice and once refused, asking which motor was meant. One
+of the grounded runs:
 
 ```json
 {"question": "What is the power consumption of the motor?"}
@@ -76,16 +80,17 @@ conceptual section, in the question's language:
 
 ```json
 {
-  "answer": "The motor's power consumption is the electrical power absorbed from the network (Pa). This absorbed power is always greater than the mechanical power available at the shaft (Pu) due to the motor's losses; the efficiency η is the ratio Pu / Pa.",
+  "answer": "The document gives an example motor as “100 cv (75 kW)” operating at 100% nominal power, so its power consumption is 75 kW.",
   "references": [
-    "www.weg.net \n\n#### 1.2.6 Rendimento \n\nO rendimento define a eficiência com que é feita a conversão da energia elétrica absorvida da rede pelo motor, em energia mecânica disponível no eixo. …",
-    "mostrado no tópico 1.2.6, em todos os motores elétricos, a potência elétrica absorvida é sempre maior que a potência mecânica disponível na ponta de eixo, ou seja, a potência consumida na rede elétrica é sempre maior que …"
+    "Um motor elétrico, trifásico de 100 cv (75 kW), IV polos, operando com 100% da potência nominal, com fator de potência original de 0,87 e rendimento de 93,5%."
   ]
 }
 ```
 
 **A maintenance question in Portuguese** — the answer separates the two
-manuals that speak about grease:
+manuals that speak about grease, and each reference is the sentence that
+grounds a claim (English from the Baldor manual, Portuguese from the
+WEG-CESTARI guide):
 
 ```json
 {"question": "Qual graxa devo usar para relubrificar os rolamentos do motor?"}
@@ -93,19 +98,32 @@ manuals that speak about grease:
 
 ```json
 {
-  "answer": "Conforme os documentos fornecidos:\n- Para motores Baldor: usar Polyrex EM (Exxon Mobil) — os motores são pré-lubrificados com essa graxa; se optar por outra, consulte um Centro de Serviço Baldor (Baldor). (fonte: documento Baldor)\n- Para proteger retentores externos de redutores em períodos sem funcionamento (>6 meses): aplicar uma fina camada de graxa NLGI #2 EP, por exemplo Texaco Multifak EP2, e remover antes da operação. (fonte: manual WEG)",
+  "answer": "Depende do equipamento. Para motores Baldor: usar Polyrex EM (Exxon Mobil) — não misturar graxas e manter a graxa limpa; em caso de dúvida consulte o serviço Baldor. Para redutores/gear units WEG: consulte o manual do produto para o lubrificante recomendado; o manual cita NLGI#2EP Texaco Multifak EP2 (ou similar) para proteção externa dos retentores em períodos longos fora de operação.",
   "references": [
-    "… Lubrication interval for 6313 or 6314 bearings that are used in 360 through 5000 frame, 2 pole motors. If roller bearings are used, bearings must be lubricated more frequently …",
-    "… O eixo de entrada do redutor deverá ser girado no mínimo duas voltas completas e este procedimento deverá ser repetido, no mínimo, 1 vez a cada 2 meses. …"
+    "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations.",
+    "Caution: Keep grease clean. Mixing dissimilar grease is not recommended.",
+    "A graxa deve ser removida antes do início da operação (graxa recomendada NLGI#2EP Texaco Multifak EP2 ou similar)."
   ]
 }
 ```
 
-When the indexed documents do not support an answer (for example _"Qual é
-a capital da Austrália?"_) the agent refuses in the question's language
-and returns an empty `references` list — it never invents a source.
-Questions take several seconds each (7–20 s observed): one or two LLM
-calls plus retrieval.
+When the indexed documents do not support an answer the agent refuses in
+the question's language and returns an empty `references` list — it never
+invents a source:
+
+```json
+{"question": "Qual é a capital da Austrália?"}
+```
+
+```json
+{
+  "answer": "Desculpe, não encontrei a informação sobre a capital da Austrália nos documentos fornecidos.",
+  "references": []
+}
+```
+
+Questions take several seconds each (8–25 s observed): one or two LLM
+calls plus retrieval, with the model writing out the passages it quotes.
 
 ## How it works
 
@@ -122,7 +140,7 @@ flowchart LR
     R --> A["AgentService<br/>bounded tool loop"]
     A --> L["LLM port<br/>PydanticAI direct<br/>structured reply"]
     L -. "query_knowledge(query)" .-> R
-    A --> O["answer +<br/>cited chunks"]
+    A --> O["answer +<br/>quoted passages"]
   end
   R --> Q
 ```
@@ -138,9 +156,12 @@ Answering is **dual-path**: a deterministic seed retrieval puts the top-k
 chunks in front of the model as an XML-rendered context, and the model may
 call a `query_knowledge` tool (at most 3 rounds) against the same retriever
 when the seed is not enough. The final turn is a **provider-enforced
-structured reply** — answer text, the ids of the chunks it actually cites,
-and a `has_answer` flag — so `references` carries exactly what grounded the
-answer, never everything that was retrieved. The prompt is a deliberate,
+structured reply** — answer text, the passages it quotes verbatim from the
+chunks, and a `has_answer` flag. Each quote is verified by containment
+against the chunks the model saw and resolved to its document and page;
+what cannot be found is dropped — so `references` carries exactly the
+passages that grounded the answer, never whole pages or everything that
+was retrieved. The prompt is a deliberate,
 reviewed artifact in `src/domain/services/prompts.py`, not a string buried
 in a route.
 
@@ -177,6 +198,7 @@ Accuracy is measured, not assumed.
 make install                      # local venv, Python >= 3.12
 make eval label=my-experiment     # runs against the eval collection, prints deltas vs the last run
 make eval-fresh label=reindexed   # drop the eval collection and re-ingest first (after ingestion changes)
+make eval-answers label=agent     # adds the answer layer: every case through the agent (LLM calls, a few minutes)
 ```
 
 ### Scoreboard
@@ -196,9 +218,32 @@ reach here.
 | **Multilingual embedder** — `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json) | **0.95** | **0.95** | **0.91** |
 
 Gates are computed over the 83 gated cases (93 minus 8 unanswerable
-controls and 2 image-only diagnostics). Answer-layer gates (fact recall,
-citation precision/recall, refusal rate) are the next harness increment
-and will join this table.
+controls and 2 image-only diagnostics).
+
+#### Answer layer
+
+Same dataset, the whole `/question` path (seed retrieval → `gpt-5-mini`
+→ structured reply), scored deterministically: fact recall over the
+cases' `expected_facts`, citation precision and recall over the cited
+`(document, page)` pairs, refusal rate over the 8 unanswerable controls.
+No LLM judge — red cases are read by hand from the per-case JSON.
+
+| Run | Citations | `query_knowledge` tool | fact recall | citation precision | citation recall | refusals | latency (mean) |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json) | chunk ids | on | **0.93** | 0.70 | **0.92** | 6/8 | 11.7 s |
+| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json) | chunk ids | off | 0.92 | 0.73 | 0.91 | 7/8 | 10.5 s |
+| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json) | verbatim quotes | on | 0.92 | **0.78** | 0.90 | 7/8 | 16.0 s |
+
+The tool is neutral on the gates on this dataset (run-to-run noise is
+≈ ±0.03): it costs about a second and 55 % more input tokens, searches
+before refusing on most unanswerable questions, and never fires on the
+three cross-lingual retrieval misses, which become confidently wrong
+answers — the next retrieval work item. Making the model quote the
+passages it cites instead of naming chunks raised citation precision
+(fewer, better pages cited) at the cost of the quotes' output tokens;
+7 of 200 quotes were dropped as not found in any page. `make eval-answers label=<name>
+workers=8` reproduces a row in about five minutes for ≈ $0.20 of
+`gpt-5-mini`.
 
 ## Engineering practices
 

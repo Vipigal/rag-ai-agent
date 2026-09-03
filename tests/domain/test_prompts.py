@@ -1,5 +1,5 @@
 from domain.models import Chunk, RetrievedChunk
-from domain.services.prompts import render_chunks, render_context
+from domain.services.prompts import SYSTEM_PROMPT, render_chunks, render_context
 
 
 def retrieved(chunk_id: str, text: str, section: str | None, filename: str = "manual.pdf") -> RetrievedChunk:
@@ -24,7 +24,7 @@ def test_chunk_renders_its_provenance_with_sections_as_ordered_siblings():
 
     assert render_chunks([item]) == (
         "<chunks>\n"
-        '<chunk id="c1" document="manual.pdf" page="34">\n'
+        '<chunk document="manual.pdf" page="34">\n'
         "  <section>2. Características da Rede de Alimentação</section>\n"
         "  <section>3.4.3 Partida com chave compensadora</section>\n"
         "  <text>\n"
@@ -38,7 +38,7 @@ def test_chunk_renders_its_provenance_with_sections_as_ordered_siblings():
 def test_chunk_without_section_has_no_section_elements():
     assert render_chunks([retrieved("c1", "Nominal voltage 380 V", None)]) == (
         "<chunks>\n"
-        '<chunk id="c1" document="manual.pdf" page="34">\n'
+        '<chunk document="manual.pdf" page="34">\n'
         "  <text>\n"
         "Nominal voltage 380 V\n"
         "  </text>\n"
@@ -60,7 +60,7 @@ def test_several_chunks_keep_their_order_inside_one_chunks_element():
     rendered = render_chunks([retrieved("c2", "second", None), retrieved("c1", "first", None)])
 
     assert rendered.count("<chunk ") == 2
-    assert rendered.index('id="c2"') < rendered.index('id="c1"')
+    assert rendered.index("second") < rendered.index("first")
     assert rendered.startswith("<chunks>\n") and rendered.endswith("</chunks>")
 
 
@@ -78,3 +78,9 @@ def test_context_message_introduces_the_chunks_and_offers_the_tool_only_when_ava
     assert "query_knowledge" in with_tool
     assert render_chunks([item]) in without_tool
     assert "query_knowledge" not in without_tool
+
+
+def test_the_rules_ask_for_verbatim_quotes_and_never_mention_chunk_ids():
+    assert "verbatim" in SYSTEM_PROMPT
+    assert "citations: the passages" in SYSTEM_PROMPT
+    assert "id attribute" not in SYSTEM_PROMPT

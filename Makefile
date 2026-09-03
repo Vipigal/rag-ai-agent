@@ -1,10 +1,11 @@
 .DEFAULT_GOAL := help
-.PHONY: help install check-venv check-env up test typecheck eval eval-fresh
+.PHONY: help install check-venv check-env up test typecheck eval eval-fresh eval-answers
 
 PYTHON ?= python3
 label ?= dev
 k ?= 5
 threshold ?= 0.6
+workers ?= 4
 args ?=
 
 help:
@@ -14,6 +15,7 @@ help:
 	@echo "make typecheck                 run pyright (standard mode)"
 	@echo "make eval label=<name> [k=5] [threshold=0.6] [args='--no-compare']"
 	@echo "make eval-fresh label=<name>   drop the eval collection, re-ingest and run"
+	@echo "make eval-answers label=<name> [k=5] [threshold=0.6] [workers=4] [args='--no-compare']  retrieval + answer layer (LLM calls)"
 
 install:
 	@$(PYTHON) -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' \
@@ -42,3 +44,6 @@ eval: check-venv check-env
 eval-fresh: check-venv check-env
 	@set -a; . ./.env; set +a; curl -sf -X DELETE "$${QDRANT_URL:-http://localhost:6333}/collections/$${EVAL_QDRANT_COLLECTION:-eval_chunks}" > /dev/null || true
 	@$(MAKE) --no-print-directory eval label=$(label) k=$(k) threshold=$(threshold) args="$(args)"
+
+eval-answers: check-venv check-env
+	@$(MAKE) --no-print-directory eval label=$(label) k=$(k) threshold=$(threshold) args="--answers --workers $(workers) $(args)"

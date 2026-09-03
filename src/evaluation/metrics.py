@@ -1,3 +1,4 @@
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -54,16 +55,16 @@ def aggregate(evaluated: Evaluated) -> Aggregates:
 
 
 def _sliced(evaluated: Evaluated, dimension: str) -> dict[str, MetricBlock]:
-    values = sorted({_slice_value(case, dimension) for case, _ in evaluated})
+    values = sorted({slice_value(case, dimension) for case, _ in evaluated})
     return {
         value: _metric_block(
-            [(c, r) for c, r in evaluated if _slice_value(c, dimension) == value]
+            [(c, r) for c, r in evaluated if slice_value(c, dimension) == value]
         )
         for value in values
     }
 
 
-def _slice_value(case: GoldenCase, dimension: str) -> str:
+def slice_value(case: GoldenCase, dimension: str) -> str:
     if dimension == "document":
         return case.gold_excerpts[0].document
     return getattr(case, dimension)
@@ -73,15 +74,22 @@ def _metric_block(evaluated: Evaluated) -> MetricBlock:
     results = [result for _, result in evaluated]
     return MetricBlock(
         cases=len(results),
-        recall_at_k=_mean([r.recall for r in results]),
-        hit_rate_at_k=_mean([float(r.hit) for r in results]),
-        mrr_at_k=_mean([r.reciprocal_rank for r in results]),
-        precision_at_k=_mean([r.precision for r in results]),
+        recall_at_k=mean([r.recall for r in results]),
+        hit_rate_at_k=mean([float(r.hit) for r in results]),
+        mrr_at_k=mean([r.reciprocal_rank for r in results]),
+        precision_at_k=mean([r.precision for r in results]),
     )
 
 
-def _mean(values: list[float]) -> float:
+def mean(values: Sequence[float]) -> float:
     return sum(values) / len(values) if values else 0.0
+
+
+def p95(values: Sequence[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    return ordered[math.ceil(0.95 * len(ordered)) - 1]
 
 
 def evaluate_case(

@@ -4,7 +4,7 @@ title: Project Glossary
 description: The ubiquitous language of the RAG question-answering system — one word per concept across code, bundle and evals, with the words to avoid.
 tags: [glossary, domain-language]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:38:25Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:53:05Z }
 verified: { by: human:vinicius, at: 2026-09-02T02:40:00Z }
 ---
 
@@ -62,8 +62,8 @@ What the model returns at the end of its turn — the answer text, its citations
 _Avoid_: output, response (that is HTTP), completion (that is the port's return: a reply or a tool request)
 
 **Citation**:
-A chunk id the model names as grounding its reply.
-_Avoid_: marker, source
+A passage the model copies verbatim from a chunk as grounding its reply; the system resolves it to the chunk that contains it and drops what it cannot find (Decision 0013 — before it, a chunk id).
+_Avoid_: marker, source, quote (in prose; `quote` is the field name)
 
 **Refusal**:
 A reply that found no answer in the chunks: a one-sentence explanation in the question's language, no references.
@@ -78,7 +78,7 @@ The system's result for a question — the answer text and its references — th
 _Avoid_: reply (that is the model's), result
 
 **Reference**:
-A cited chunk returned with the answer; on the wire, its verbatim text.
+A citation resolved to its chunk and returned with the answer — the quoted passage plus the chunk's provenance; on the wire, the passage alone.
 _Avoid_: source (overloaded with OKF `sources`), excerpt
 
 ## Evaluation

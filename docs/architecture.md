@@ -4,7 +4,7 @@ title: System Architecture — Ports & Adapters Lite
 description: The operating map of the codebase — the hexagonal-lite structure, the concepts behind it (ports, adapters, domain services, composition root), the rules every implementation must follow, and how to extend the system.
 tags: [architecture, hexagonal, ports-and-adapters, ddd, protocols]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:30:26Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:57:30Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:22:00Z }
 sources:
   - id: cosmic-python
@@ -36,7 +36,7 @@ operates through it.
 src/
   domain/       the hexagon: pure Python, zero framework imports
     models      entities — Document, Chunk, RetrievedChunk, Answer —
-                plus the LLM vocabulary: Message, ToolCall, AgentReply, Completion
+                plus the LLM vocabulary: Message, ToolCall, AgentReply, Completion, Usage
     ports       Protocols — PdfExtractor, EmbeddingModel, VectorStore,
                 Retriever, LLM — plus the callable aliases Chunker
                 and UnitSplitter
@@ -55,7 +55,8 @@ src/
                 0008 and 0012)
   api/          FastAPI edge: thin routes + the composition root
   evaluation/   the eval harness: golden-dataset loader, matching,
-                metrics, report, CLI runner (data lives in /evals)
+                retrieval metrics, answer scoring (facts, citations,
+                refusals, usage), report, CLI runner (data lives in /evals)
 ```
 
 Two request flows, one shared domain:
@@ -124,7 +125,14 @@ reindex — its eval must cover both sides.
    write the concrete thing and wait.
 5. Routes are thin: validate with Pydantic → call one domain service → map
    the result to the challenge's response contract. Pydantic models exist
-   only in `src/api/`.
+   only in `src/api/`. Routes are plain `def`, never `async def`: the
+   adapters are synchronous and pydantic-ai's sync wrappers drive an event
+   loop of their own, which fails inside the server's running loop
+   (`RuntimeError: this event loop is already running` — the `/documents`
+   route hit it on 2026-09-02); a plain `def` runs in the thread pool,
+   which also keeps the CPU-bound extraction off the loop. The owner's
+   stated direction is a fully async path later (async ports, `async def`
+   routes, one loop); until then this rule holds.
 6. Domain services end in `Service`; entities are bare nouns.
 7. TDD runs through the seams: domain services are tested against fakes of
    their ports; adapters get their own tests; LLM/embedding accuracy

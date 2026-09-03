@@ -1,8 +1,9 @@
 from dataclasses import replace
 
-from domain.models import AgentReply, Answer, Completion, Message, RetrievedChunk, ToolCall
+from domain.models import AgentReply, Answer, Completion, Message, Reference, RetrievedChunk, ToolCall, Usage
 from domain.ports import LLM, Retriever, Tool
 from domain.services.prompts import SYSTEM_PROMPT, render_chunks, render_context
+from domain.services.quotes import contains, normalize
 
 
 class AgentService:
@@ -30,7 +31,7 @@ class AgentService:
 
             Use it when the chunks already shown do not answer the question. Reformulate
             freely: synonyms, the other language, technical terms. Returns chunks you can
-            cite by id.
+            quote in your citations.
 
             Args:
                 query: The search query to run against the indexed documents.
@@ -52,13 +53,16 @@ class AgentService:
         ]
 
         completion = self._llm.complete(messages, self._offered(tools, rounds))
+        usage = completion.usage
         while completion.reply is None and rounds < self._max_tool_rounds:
             messages.append(completion.message)
             messages.extend(_run_tool(call, tools) for call in completion.message.tool_calls)
+            usage += Usage(tool_calls=len(completion.message.tool_calls))
             rounds += 1
             completion = self._llm.complete(messages, self._offered(tools, rounds))
+            usage += completion.usage
 
-        return _to_answer(_final_reply(completion), seen, seed)
+        return _to_answer(_final_reply(completion), seen, usage)
 
     def _offered(self, tools: list[Tool], rounds: int) -> list[Tool]:
         return tools if rounds < self._max_tool_rounds else []
@@ -88,16 +92,34 @@ def _final_reply(completion: Completion) -> AgentReply:
     return completion.reply
 
 
-def _to_answer(reply: AgentReply, seen: dict[str, RetrievedChunk], seed: list[RetrievedChunk]) -> Answer:
+def _to_answer(reply: AgentReply, seen: dict[str, RetrievedChunk], usage: Usage) -> Answer:
     if not reply.has_answer:
-        return Answer(text=reply.answer, references=[])
-    return Answer(text=reply.answer, references=_cited(seen, reply.citations) or list(seed))
+        return Answer(text=reply.answer, references=[], has_answer=False, usage=usage)
+    references: list[Reference] = []
+    unmatched: list[str] = []
+    for quote in _unique(reply.citations):
+        item = _quoted_from(seen, quote)
+        if item is None:
+            unmatched.append(quote)
+        else:
+            references.append(
+                Reference(chunk=item.chunk, quote=quote, retrieval_source=item.retrieval_source)
+            )
+    return Answer(
+        text=reply.answer,
+        references=references,
+        has_answer=True,
+        usage=usage,
+        unmatched_citations=unmatched,
+    )
 
 
-def _cited(seen: dict[str, RetrievedChunk], citations: list[str]) -> list[RetrievedChunk]:
-    references: list[RetrievedChunk] = []
-    for chunk_id in citations:
-        item = seen.get(chunk_id)
-        if item is not None and item not in references:
-            references.append(item)
-    return references
+def _unique(quotes: list[str]) -> list[str]:
+    by_key: dict[str, str] = {}
+    for quote in quotes:
+        by_key.setdefault(normalize(quote), quote)
+    return list(by_key.values())
+
+
+def _quoted_from(seen: dict[str, RetrievedChunk], quote: str) -> RetrievedChunk | None:
+    return next((item for item in seen.values() if contains(item.chunk.text, quote)), None)

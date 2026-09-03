@@ -4,7 +4,7 @@ title: 0006 — Eval metrics and golden-dataset shape
 description: Deterministic metrics (recall@5, hit rate, MRR, fact/citation checks) gate experiments while LLM-judged metrics only diagnose; retrieval ground truth is verbatim excerpts + (doc, page), never chunk IDs; the golden dataset is hand-authored YAML in evals/golden/ covering personas, tables, figures, cross-lingual and unanswerable cases.
 tags: [evals, metrics, golden-dataset, retrieval, llm-as-judge]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T22:05:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:19:48Z }
 verified: { by: human:vinicius, at: 2026-08-31T22:15:00Z }
 sources:
   - id: eval-metrics
@@ -92,7 +92,11 @@ spec.[^spec]
   `document`.
 - Open questions deferred to the harness: token-overlap threshold (needs
   value + test once chunking exists), judge model/temperature pinning,
-  RAGAS vs hand-rolled diagnostics.
+  RAGAS vs hand-rolled diagnostics. Resolved 2026-09-02: the threshold is
+  0.6 (harness spec); the answer gates are hand-rolled and deterministic,
+  and the judge is deferred indefinitely — the owner judges red cases from
+  the per-case results JSON ([Answer Eval — Design & Implementation
+  Plan](/specs/answer-eval-design.md), owner decision 2026-09-01).
 - Every wrong answer found in manual use becomes a case before it is fixed
   (per the [Development Workflow](/docs/development-workflow.md)).
 - Serves _Retrieval_ and _Functionality_ (the two crux Golden Rules)

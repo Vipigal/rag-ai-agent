@@ -6,22 +6,22 @@ from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
 
 from api.composition import get_agent_service
 from api.main import app
-from domain.models import Answer, Chunk, RetrievedChunk
+from domain.models import Answer, Chunk, Reference
 
 QUESTION = "What is the power consumption of the motor?"
 
 
-def _reference(text: str, page: int) -> RetrievedChunk:
+def _reference(quote: str, page: int) -> Reference:
     chunk = Chunk(
         id=f"c{page}",
         document_id="doc",
         filename="manual.pdf",
-        text=text,
+        text=f"Page {page} text. {quote} More page text.",
         page=page,
         section=None,
         index_in_doc=0,
     )
-    return RetrievedChunk(chunk=chunk, score=0.9)
+    return Reference(chunk=chunk, quote=quote)
 
 
 class FakeAgentService:

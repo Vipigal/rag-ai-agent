@@ -4,7 +4,7 @@ title: Question Agent — Design & Implementation Plan
 description: Approved design for POST /question — the domain LLM vocabulary and LLM port, the AgentService dual-path flow (seed retrieval + bounded query_knowledge tool loop) with the [i]-citation / NO_ANSWER protocol, the PydanticAI direct adapter, the thin route, composition/config — plus the ordered TDD implementation plan (no separate plan document), the implementation notes from the first landing (2026-09-01) and the Decision 0009 revision (2026-09-02) — structured AgentReply output, function-derived tools, chunk ids as citation handles, XML-rendered context in a system message.
 tags: [agent, question, llm, tool-loop, citations, pydantic-ai, design, spec]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:56:16Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:53:05Z }
 verified: { by: human:vinicius, at: 2026-09-01T18:58:00Z }
 sources:
   - id: challenge
@@ -399,9 +399,22 @@ Through the compose path with `openai:gpt-5-mini`, defaults:
   harness's answer layer and belongs in the golden dataset as a
   cross-lingual refusal case.
 
-The tool-on/off `make eval` runs in the eval plan are **not yet
-runnable**: the harness measures retrieval only, so both configs would
-produce identical numbers. They run as soon as the answer layer lands.
+The tool-on/off runs in the eval plan became runnable on 2026-09-02 with
+the answer layer (`make eval-answers`, [Answer Eval — Design &
+Implementation Plan](/specs/answer-eval-design.md)); the first pair
+(`agent-tool-on` / `agent-tool-off`) is read in the [Eval Experiment
+Findings](/evals/results/experiment-findings.md).
+
+# Revision — Decision 0013 (2026-09-02)
+
+Citations stopped being chunk ids: [Decision
+0013](/docs/decisions/0013-citations-as-quotes.md) makes `AgentReply.citations`
+a list of passages quoted verbatim, resolved by normalized containment over
+the chunks the model saw (`domain/services/quotes.py`), returned as
+`Reference(chunk, quote, retrieval_source)` and rendered on the wire as the
+quotes; `<chunk>` lost its `id` attribute and the seed fallback for
+uncited answers is gone. The Decision 0009 revision below is otherwise the
+design as implemented.
 
 # Revision — Decision 0009 (2026-09-02)
 

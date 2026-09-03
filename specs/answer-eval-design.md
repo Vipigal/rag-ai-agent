@@ -4,7 +4,7 @@ title: Answer Eval — Design & Implementation Plan
 description: Approved design for the harness's answer layer — the minimal increment that makes the tool-on/off and model-choice evals runnable. Deterministic gates (fact recall, citation precision/recall, refusal rate) and efficiency (end-to-end latency, token usage) over AgentService.answer() in-process behind an opt-in --answers flag with a thread-pool of workers; the per-case results JSON doubles as the owner's judging panel in place of an LLM judge. Records the measured cost analysis, the fact-normalization rules, the error semantics, the Usage/has_answer additions to the domain, and the ordered TDD plan.
 tags: [evals, harness, answers, citations, facts, refusal, usage, cost, design, spec]
 status: draft
-generated: { by: claude_code/claude-fable-5, at: 2026-09-02T03:09:47Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:20:43Z }
 sources:
   - id: harness-spec
     resource: /specs/eval-harness-design.md
@@ -510,6 +510,67 @@ step names.
    with the measured baseline (deterministic answer gates, owner as
    judge, `Usage`/`has_answer` in the domain, one `k` per run) through
    the approval gate.
+
+# Implementation notes (2026-09-02, as built)
+
+The plan above was executed in order, TDD-first (195 tests green, pyright
+zero). Where the built system differs from the design, the difference and
+its reason:
+
+- **`"answers": null` is always present** in a retrieval-only payload
+  rather than the key being absent, so the schema is explicit and the
+  compare rule reads one field. The committed retrieval runs that predate
+  the key are read with `.get("answers")`. Every other retrieval-only
+  field is byte-identical to before.
+- **Thread safety needed one production change.** The safety argument in
+  design decision 2 held for a `str` model (a client per call). Since the
+  `FallbackModel` and the pydantic-ai `Embedder` landed, both are built
+  once and shared across worker threads, each with its own event loop. A
+  spike before the first run (6 threads × 2 rounds) failed one embedding
+  call in twelve with `RuntimeError: <asyncio.locks.Event> is bound to a
+  different event loop`; the LLM side passed 12 of 12 and 24 of 24. The
+  embedding adapter now takes a factory and keeps one `Embedder` per
+  thread (`threading.local`); the production `/question` route runs in the
+  same thread-pool shape, so the fix is not eval-only. The LLM adapter is
+  unchanged until a failure is measured. See the [Retrieval
+  Module](/src/retrieval/retrieval.md).
+- **The runner mirrors production wiring**: `PydanticAiLLM(llm_model())`,
+  i.e. `LLM_MODEL` behind `LLM_FALLBACK_MODEL`, not the bare model name.
+  The run info records `llm_model` only; a run in which the fallback
+  actually answered would show its provider's latency, not an `error`.
+- **Progress is logged per case** (`<id>: answered in N s (M request(s))`,
+  `<id>: error after N s: …`) through the stdlib logger, with the httpx
+  request logs silenced. Without it the first attempt ran silent for ten
+  minutes and could not be told from a hang.
+- **Normalization folds Unicode dashes to `-`** (U+2010–U+2014, U+2212)
+  before the digit rules, added after the first run: the model wrote
+  `Molykote G‑Rapid Plus` with a non-breaking hyphen and a correct answer
+  scored red. Trailing decimal zeros are deliberately not stripped
+  (`1,80` versus the fact `1,8`): the same rule would turn the
+  digit-grouped `1.800` into `1.8`, so facts are authored as the manual
+  prints them.
+- **`false_refusal_rate` excludes errored cases** (they are counted in
+  `errors`), so the two diagnostics never double-count a failure; an
+  error is also not a refusal for `refusal_rate`, as designed.
+- **`fact_cases` sits in the gates block**; slice blocks carry
+  `fact_recall` as `null` when no case in the slice has facts, instead of
+  a misleading 0.
+- **An errored case carries `"usage": null`** (nothing was measured), not
+  zeros.
+- **Per-question means** divide by the answered (non-errored) cases;
+  `run.cases.answered` counts every case that went through the answerer,
+  errored ones included.
+- **The `cited` entries' `source`** (`seed`/`tool`) is derived in the
+  report from the first reference on that `(document, page)`.
+- **Per-case `quotes` and `unmatched_citations`** (added with [Decision
+  0013](/docs/decisions/0013-citations-as-quotes.md)): the passages the
+  model quoted and the ones no chunk contained, 140-character previews,
+  with the run total of unmatched quotes in `diagnostics` and on the
+  `ANSWER DIAG` line. The citation gates still read `(document, page)`,
+  now of the chunk each quote resolved to.
+- **`make eval-answers`** defaults to `workers=4` as designed; the first
+  runs used `workers=8` because 93 gpt-5-mini questions with tool rounds
+  exceeded ten minutes at four, and no 429 appeared at eight.
 
 # Open questions that stay open
 

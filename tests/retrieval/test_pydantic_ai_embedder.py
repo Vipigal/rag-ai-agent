@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 
 from pydantic_ai.embeddings import Embedder, EmbeddingSettings
 from pydantic_ai.embeddings.result import EmbeddingResult, EmbedInputType
@@ -26,7 +27,7 @@ class RecordingModel(TestEmbeddingModel):
 
 def make() -> tuple[RecordingModel, PydanticAiEmbeddingModel]:
     model = RecordingModel()
-    return model, PydanticAiEmbeddingModel(Embedder(model), max_batch=2)
+    return model, PydanticAiEmbeddingModel(lambda: Embedder(model), max_batch=2)
 
 
 def test_documents_are_embedded_in_order_in_batches_of_at_most_max_batch():
@@ -54,3 +55,21 @@ def test_no_documents_means_no_provider_call():
 
     assert embedder.embed_documents([]) == []
     assert model.calls == []
+
+
+def test_each_thread_builds_its_own_embedder_once_from_the_factory():
+    built: list[Embedder] = []
+
+    def make_embedder() -> Embedder:
+        built.append(Embedder(RecordingModel()))
+        return built[-1]
+
+    embedder = PydanticAiEmbeddingModel(make_embedder, max_batch=2)
+
+    embedder.embed_query("a")
+    embedder.embed_documents(["b"])
+    with ThreadPoolExecutor(max_workers=1) as other_thread:
+        other_thread.submit(embedder.embed_query, "c").result()
+        other_thread.submit(embedder.embed_query, "d").result()
+
+    assert len(built) == 2

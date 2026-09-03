@@ -1,4 +1,5 @@
-from domain.models import Chunk, RetrievedChunk
+from domain.models import Answer, Chunk, Reference, RetrievedChunk, Usage
+from evaluation.answers import AnswerRun, AnswerSettings
 from evaluation.dataset import GoldenCase, GoldExcerpt
 from evaluation.metrics import CaseResult
 from evaluation.report import CaseRun, RunInfo, build_payload, render
@@ -222,6 +223,7 @@ def test_build_payload_matches_results_schema() -> None:
                 ],
             },
         ],
+        "answers": None,
     }
 
 
@@ -353,3 +355,234 @@ def test_render_colors_deltas_like_pytest() -> None:
     assert "\x1b[32m(+0.07)\x1b[0m" in output
     assert "\x1b[31m(-0.02)\x1b[0m" in output
     assert "\x1b[2m(=)\x1b[0m" in output
+
+
+SETTINGS = AnswerSettings(
+    llm_model="openai:gpt-5-mini", tool_enabled=True, max_tool_rounds=3, workers=4
+)
+FULL_HIT = CaseResult(
+    case_id="x",
+    recall=1.0,
+    hit=True,
+    reciprocal_rank=1.0,
+    precision=1.0,
+    matched_excerpts=(0,),
+    first_relevant_rank=1,
+    chunk_matches=((0,),),
+)
+
+
+def _facts_case(case_id: str, facts: tuple[str, ...], category: str = "spec_lookup") -> GoldenCase:
+    return GoldenCase(
+        id=case_id,
+        question="qual o grau de proteção?",
+        persona="operator",
+        language="pt",
+        category=category,
+        gold_excerpts=() if category == "unanswerable" else _case(case_id).gold_excerpts,
+        reference_answer="IP55.",
+        expected_facts=facts,
+    )
+
+
+def test_build_payload_with_answers_adds_the_answers_block_and_per_case_answer() -> None:
+    cited = Reference(chunk=_retrieved(0.9).chunk, quote="grau de proteção IP55", retrieval_source="tool")
+    case_runs = [
+        CaseRun(
+            case=_facts_case("doc-001", ("IP55",)),
+            result=FULL_HIT,
+            retrieved=(_retrieved(0.9),),
+            latency_ms=38.2,
+            answer=AnswerRun(
+                answer=Answer(
+                    text="O grau é IP55.",
+                    references=[cited],
+                    usage=Usage(requests=2, tool_calls=1, input_tokens=6412, cache_read_tokens=2304, output_tokens=812),
+                    unmatched_citations=["uma passagem que o modelo inventou"],
+                ),
+                latency_ms=6821.44,
+            ),
+        ),
+        CaseRun(
+            case=_facts_case("neg-001", (), category="unanswerable"),
+            result=None,
+            retrieved=(),
+            latency_ms=None,
+            answer=AnswerRun(
+                answer=Answer(
+                    text="Não há.", references=[], has_answer=False,
+                    usage=Usage(requests=1, input_tokens=2000, output_tokens=50),
+                ),
+                latency_ms=3000.0,
+            ),
+        ),
+        CaseRun(
+            case=_facts_case("doc-003", ("IP66",)),
+            result=FULL_HIT,
+            retrieved=(_retrieved(0.9),),
+            latency_ms=41.8,
+            answer=AnswerRun(answer=None, latency_ms=120.0, error="RuntimeError('cap')"),
+        ),
+    ]
+
+    payload = build_payload(RUN_INFO, case_runs, unanswerable_excluded=1, answers=SETTINGS)
+
+    assert payload["run"]["cases"] == {
+        "total": 3, "gated": 2, "image_diagnostic": 0, "unanswerable_excluded": 1, "answered": 3
+    }
+    assert payload["gates"]["recall_at_k"] == 1.0
+    assert payload["efficiency"]["retrieval_latency_ms"] == {"mean": 40.0, "p95": 41.8}
+    block = {
+        "cases": 2, "fact_recall": 0.5, "citation_precision": 0.5, "citation_recall": 0.5,
+        "false_refusal_rate": 0.0,
+    }
+    assert payload["answers"] == {
+        "llm_model": "openai:gpt-5-mini",
+        "tool_enabled": True,
+        "max_tool_rounds": 3,
+        "workers": 4,
+        "gates": {
+            "fact_recall": 0.5, "fact_cases": 2,
+            "citation_precision": 0.5, "citation_recall": 0.5,
+            "refusal_rate": 1.0, "unanswerable_cases": 1,
+        },
+        "diagnostics": {
+            "false_refusal_rate": 0.0, "errors": 1, "unmatched_citations": 1, "requires_image": None
+        },
+        "efficiency": {
+            "latency_ms": {"mean": 3313.8, "p95": 6821.4},
+            "usage": {
+                "requests": 3, "tool_calls": 1, "input_tokens": 8412,
+                "cache_read_tokens": 2304, "output_tokens": 862,
+            },
+            "per_question": {"requests": 1.5, "input_tokens": 4206.0, "output_tokens": 431.0},
+        },
+        "slices": {
+            "persona": {"operator": block},
+            "language": {"pt": block},
+            "category": {"spec_lookup": block},
+            "document": {"manual.pdf": block},
+        },
+    }
+    answered, refused, errored = payload["cases"]
+    assert answered["answer"] == {
+        "text": "O grau é IP55.",
+        "has_answer": True,
+        "reference_answer": "IP55.",
+        "facts": [{"fact": "IP55", "found": True}],
+        "fact_recall": 1.0,
+        "cited": [{"document": "manual.pdf", "page": 34, "in_gold": True, "source": "tool"}],
+        "quotes": ["grau de proteção IP55"],
+        "unmatched_citations": ["uma passagem que o modelo inventou"],
+        "citation_precision": 1.0,
+        "citation_recall": 1.0,
+        "latency_ms": 6821.4,
+        "usage": {
+            "requests": 2, "tool_calls": 1, "input_tokens": 6412,
+            "cache_read_tokens": 2304, "output_tokens": 812,
+        },
+        "error": None,
+    }
+    assert refused["id"] == "neg-001"
+    assert {key: refused[key] for key in ("recall", "hit", "reciprocal_rank", "precision", "first_relevant_rank", "latency_ms", "retrieved")} == {
+        "recall": None, "hit": None, "reciprocal_rank": None, "precision": None,
+        "first_relevant_rank": None, "latency_ms": None, "retrieved": None,
+    }
+    assert refused["gold_excerpts"] == []
+    assert refused["answer"]["has_answer"] is False
+    assert refused["answer"]["facts"] == []
+    assert (refused["answer"]["fact_recall"], refused["answer"]["citation_precision"], refused["answer"]["citation_recall"]) == (None, None, None)
+    assert errored["answer"] == {
+        "text": None,
+        "has_answer": False,
+        "reference_answer": "IP55.",
+        "facts": [{"fact": "IP66", "found": False}],
+        "fact_recall": 0.0,
+        "cited": [],
+        "quotes": [],
+        "unmatched_citations": None,
+        "citation_precision": 0.0,
+        "citation_recall": 0.0,
+        "latency_ms": 120.0,
+        "usage": None,
+        "error": "RuntimeError('cap')",
+    }
+
+
+def _answers_block(fact_recall: float = 0.72, errors: int = 0) -> dict:
+    slice_block = {
+        "cases": 8, "fact_recall": 0.75, "citation_precision": 0.7, "citation_recall": 0.88,
+        "false_refusal_rate": 0.0,
+    }
+    return {
+        "llm_model": "openai:gpt-5-mini",
+        "tool_enabled": True,
+        "max_tool_rounds": 3,
+        "workers": 4,
+        "gates": {
+            "fact_recall": fact_recall, "fact_cases": 57,
+            "citation_precision": 0.61, "citation_recall": 0.79,
+            "refusal_rate": 0.875, "unanswerable_cases": 8,
+        },
+        "diagnostics": {
+            "false_refusal_rate": 0.06, "errors": errors, "unmatched_citations": 3,
+            "requires_image": {"fact_recall": 0.0, "citation_precision": 0.5, "citation_recall": 0.5},
+        },
+        "efficiency": {
+            "latency_ms": {"mean": 6800.0, "p95": 14200.0},
+            "usage": {
+                "requests": 158, "tool_calls": 65, "input_tokens": 498000,
+                "cache_read_tokens": 121000, "output_tokens": 112000,
+            },
+            "per_question": {"requests": 1.7, "input_tokens": 5400.0, "output_tokens": 1200.0},
+        },
+        "slices": {"persona": {}, "language": {}, "category": {}, "document": {"LB5001.pdf": slice_block}},
+    }
+
+
+def test_render_with_answers_appends_the_answer_sections() -> None:
+    payload = _payload()
+    payload["answers"] = _answers_block()
+    payload["run"]["cases"]["answered"] = 93
+
+    output = render(payload, compare=None, compare_name=None, color=False)
+
+    assert "93 answered" in output
+    assert "ANSWER GATES (83 cases)" in output
+    assert "fact_recall(57)" in output and "refusal_rate(8)" in output
+    assert "0.72" in output and "0.88" in output
+    assert "ANSWERS BY DOCUMENT" in output
+    assert "ANSWER DIAG   false_refusal 0.06 · errors 0 · unmatched quotes 3 · requires_image (2): fact_recall 0.00" in output
+    assert "answer latency: mean 6.8 s · p95 14.2 s (4 workers) · llm calls 158 · tool calls 65" in output
+    assert "tokens: in 498.0k (cached 121.0k) · out 112.0k · per question in 5.4k / out 1.2k" in output
+
+
+def test_render_without_answers_prints_no_answer_sections() -> None:
+    output = render(_payload(), compare=None, compare_name=None, color=False)
+
+    assert "ANSWER" not in output
+
+
+def test_render_answer_deltas_only_against_a_previous_run_with_answers() -> None:
+    current, previous = _payload(), _payload()
+    current["answers"] = _answers_block(fact_recall=0.72)
+    previous["answers"] = _answers_block(fact_recall=0.67)
+    retrieval_only = _payload()
+    retrieval_only["answers"] = None
+
+    with_deltas = render(current, compare=previous, compare_name="a.json", color=False)
+    without = render(current, compare=retrieval_only, compare_name="b.json", color=False)
+
+    assert "0.72 (+0.05)" in with_deltas
+    assert "0.88 (=)" in with_deltas
+    assert "previous run has no answer layer — answer deltas omitted" in without
+    assert "0.72 (+" not in without
+
+
+def test_render_paints_errors_red_only_when_present() -> None:
+    clean, failing = _payload(), _payload()
+    clean["answers"] = _answers_block(errors=0)
+    failing["answers"] = _answers_block(errors=2)
+
+    assert "\x1b[31merrors 2\x1b[0m" in render(failing, compare=None, compare_name=None, color=True)
+    assert "\x1b[31merrors 0" not in render(clean, compare=None, compare_name=None, color=True)
