@@ -5,6 +5,7 @@ description: Co-located overview of the 93-case golden dataset — what each YAM
 tags: [evals, golden-dataset, corpus, ground-truth]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-04T12:00:00Z }
+verified: { by: human:vinicius, at: 2026-09-04T17:22:00Z }
 sources:
   - id: decision-0006
     resource: /docs/decisions/0006-eval-metrics-and-golden-dataset.md
@@ -28,13 +29,13 @@ written by.
 
 # The files
 
-| File            | Source PDF (pages, language)                                                | Cases | Role                                                                 |
-| --------------- | --------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------- |
-| `lb5001.yaml`   | LB5001.pdf — AC & DC Motor Installation & Maintenance, Baldor/ABB (2 p., EN) | 8     | Small-doc baseline; grease/relubrication tables                       |
-| `mn414.yaml`    | MN414_0224.pdf — AC Submersible Pump Motors, Baldor-Reliance (16 p., EN)     | 17    | Cross-page synthesis, color-code tables, one photo-only image case    |
-| `cestari.yaml`  | WEG-CESTARI IOM quick guide — gear units (84 p., trilingual PT/ES/EN)        | 20    | **OCR-ingestion canary**: broken text layer, rotated defect table     |
-| `weg-guia.yaml` | WEG Guia de Especificação de Motores Elétricos (68 p., PT)                   | 40    | Main table/figure/formula load, incl. the flattened-table canary      |
-| `negatives.yaml`| — (no source)                                                                | 8     | Unanswerable controls with near-miss traps                            |
+| File             | Source PDF (pages, language)                                                 | Cases | Role                                                               |
+| ---------------- | ---------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------ |
+| `lb5001.yaml`    | LB5001.pdf — AC & DC Motor Installation & Maintenance, Baldor/ABB (2 p., EN) | 8     | Small-doc baseline; grease/relubrication tables                    |
+| `mn414.yaml`     | MN414_0224.pdf — AC Submersible Pump Motors, Baldor-Reliance (16 p., EN)     | 17    | Cross-page synthesis, color-code tables, one photo-only image case |
+| `cestari.yaml`   | WEG-CESTARI IOM quick guide — gear units (84 p., trilingual PT/ES/EN)        | 20    | **OCR-ingestion canary**: broken text layer, rotated defect table  |
+| `weg-guia.yaml`  | WEG Guia de Especificação de Motores Elétricos (68 p., PT)                   | 40    | Main table/figure/formula load, incl. the flattened-table canary   |
+| `negatives.yaml` | — (no source)                                                                | 8     | Unanswerable controls with near-miss traps                         |
 
 # Page-numbering semantics
 
@@ -72,7 +73,7 @@ Every case in `negatives.yaml` has no answer in the corpus:
 `gold_excerpts` is empty, the `reference_answer` is a grounded refusal,
 and the harness checks that the system refused instead of hallucinating.
 They are excluded from retrieval metrics. Several are deliberate
-near-miss traps — the corpus contains something *similar* that a
+near-miss traps — the corpus contains something _similar_ that a
 hallucinating system would grab (e.g. `neg-007`: a 12-month warranty
 exists in the corpus, but for CESTARI gearboxes, not the pump motor being
 asked about).
@@ -122,5 +123,6 @@ when multimodal ingestion does.
 
 [^decision-0006]: 0006 — Eval metrics and golden-dataset shape.
 
-[^corpus-findings]: Case Files Corpus Findings — CESTARI broken CMap,
+[^corpus-findings]:
+    Case Files Corpus Findings — CESTARI broken CMap,
     pymupdf4llm table behavior on this corpus.

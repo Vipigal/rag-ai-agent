@@ -5,6 +5,7 @@ description: The setup path a newcomer walks is a product surface — a committe
 tags: [developer-ux, makefile, docker-compose, python-version, logging, env]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
+verified: { by: human:vinicius, at: 2026-09-03T17:22:00Z }
 sources:
   - id: golden-rules
     resource: /docs/golden-rules.md
@@ -76,7 +77,7 @@ curated five-minute path is the README's job and is out of scope here.
   stays `python:3.14-slim`, the interpreter every live smoke ran on. The
   floor is verified, not assumed — see Consequences.
 - **`make up` runs compose in the foreground** (`docker compose up
-  --build`): you watch the build, Qdrant's startup, uvicorn,
+--build`): you watch the build, Qdrant's startup, uvicorn,
   and every request; Ctrl-C stops the stack. Supersedes 0003's detached
   `-d`.
 - **Qdrant healthcheck + `depends_on: condition: service_healthy`.** The
@@ -132,7 +133,7 @@ curated five-minute path is the README's job and is out of scope here.
   and 3.14.7 (throwaway venvs for 3.12/3.13; the image and the owner's
   venv on 3.14).
 - `make up` no longer returns; anything that chained `make up && make
-  eval` starts the stack in another terminal (the
+eval` starts the stack in another terminal (the
   [Eval Harness Module](/src/evaluation/evaluation.md) says so).
 - Decision 0003 stands for pip + venv + pinned requirements and
   docker-first delivery; its "Python 3.14 pinned" and "detached compose"
@@ -149,5 +150,4 @@ curated five-minute path is the README's job and is out of scope here.
     0003 — Toolchain: the pip/venv/docker-first choices this record
     amends.
 
-[^ingestion-module]:
-    Ingestion Module — per-stage timings behind the progress lines.
+[^ingestion-module]: Ingestion Module — per-stage timings behind the progress lines.

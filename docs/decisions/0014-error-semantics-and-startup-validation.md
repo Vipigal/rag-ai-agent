@@ -5,6 +5,7 @@ description: Every API error is {"detail": "<one sentence naming the culprit and
 tags: [api, errors, openapi, developer-ux, startup, health, fastapi, pydantic-ai, qdrant]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
+verified: { by: human:vinicius, at: 2026-09-03T17:22:00Z }
 sources:
   - id: challenge
     resource: /docs/challenge.pdf

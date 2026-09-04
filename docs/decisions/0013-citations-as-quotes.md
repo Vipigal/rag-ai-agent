@@ -2,9 +2,11 @@
 type: Decision
 title: 0013 — Citations are verbatim passages resolved by containment; references are the quotes
 description: The model no longer names chunk ids — AgentReply.citations is a list of passages copied verbatim from the chunks it read; AgentService resolves each quote by normalized, line-wise containment over the chunks the model saw, keeps the ones it finds as Reference(chunk, quote, retrieval_source), drops and counts the rest, and POST /question returns the quotes as references, matching the challenge's excerpt-shaped contract; the <chunk> rendering lost its id attribute and the seed-page fallback for uncited answers is gone. Short per-page ids, enum-constrained UUIDs, an {chunk_id, quote} pair, page or seed fallbacks, provenance on the wire and fuzzy alignment were rejected; the before/after pair of answer-eval runs is recorded.
-tags: [agent, citations, references, prompt, structured-output, api-contract, evals]
+tags:
+  [agent, citations, references, prompt, structured-output, api-contract, evals]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T22:19:37Z }
+verified: { by: human:vinicius, at: 2026-09-03T17:22:00Z }
 sources:
   - id: challenge
     resource: /docs/challenge.pdf
@@ -29,9 +31,9 @@ sources:
 # Context
 
 > **Amended by chain 7 of the [findings](/evals/results/experiment-findings.md)**
-> (2026-09-04): the follow-up this record named — *`unmatched_citations`
+> (2026-09-04): the follow-up this record named — _`unmatched_citations`
 > decides whether the quoting rule needs tightening, not before it is
-> measured* — came due. Reading the 14 passages `LLM_THINKING=low` had cost
+> measured_ — came due. Reading the 14 passages `LLM_THINKING=low` had cost
 > gave three rules now in `SYSTEM_PROMPT`: never abridge a passage, never
 > continue one into the translation printed beside it on a mirrored page,
 > and copy spacing character for character. Dropped quotes 14 → 8,
@@ -115,10 +117,10 @@ quote what it read.
 
 ## The measured pair (k = 5, gpt-5-mini, tool on, 8 workers)
 
-| Run                                    |   fact_recall | cit. precision | cit. recall | refusal_rate | unmatched quotes | latency mean | tokens out per question |
-| -------------------------------------- | ------------: | -------------: | ----------: | -----------: | ---------------: | -----------: | ----------------------: |
-| `20260902-202721-agent-tool-on` (ids)  |          0.93 |           0.70 |        0.92 |         0.75 |              n/a |       11.7 s |                     845 |
-| `20260902-221750-citations-as-quotes` (quotes)                      |       0.92 |        **0.78** |      0.90 |      0.88 |        7 |      16.0 s |                 1,255 |
+| Run                                            | fact_recall | cit. precision | cit. recall | refusal_rate | unmatched quotes | latency mean | tokens out per question |
+| ---------------------------------------------- | ----------: | -------------: | ----------: | -----------: | ---------------: | -----------: | ----------------------: |
+| `20260902-202721-agent-tool-on` (ids)          |        0.93 |           0.70 |        0.92 |         0.75 |              n/a |       11.7 s |                     845 |
+| `20260902-221750-citations-as-quotes` (quotes) |        0.92 |       **0.78** |        0.90 |         0.88 |                7 |       16.0 s |                   1,255 |
 
 Citation precision rose from 0.70 to 0.78 — above the ±0.03 run-to-run
 noise measured in chain 4 — for a visible reason: the model cites fewer
@@ -129,8 +131,7 @@ found in any chunk (3.5 %), one answer ended with no reference. The price
 is ≈ 400 more output tokens per question, the quotes being written out,
 and ≈ 4 s of mean latency. Two earlier passes taught the containment
 normalizer to fold quotation marks and HTML tags; all three, with the
-dropped quotes that drove the rules, are read in the findings, chain
-5.[^findings]
+dropped quotes that drove the rules, are read in the findings, chain 5.[^findings]
 
 # Alternatives rejected
 
