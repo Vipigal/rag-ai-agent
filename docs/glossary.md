@@ -3,7 +3,7 @@ type: Glossary
 title: Project Glossary
 description: The ubiquitous language of the RAG question-answering system — one word per concept across code, bundle and evals, with the words to avoid.
 tags: [glossary, domain-language]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T21:53:05Z }
 verified: { by: human:vinicius, at: 2026-09-02T02:40:00Z }
 ---

@@ -7,11 +7,8 @@ status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T04:20:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:22:00Z }
 sources:
-  - id: ingestion-spec
-    resource: /specs/ingestion-baseline-design.md
-    title: Naive Ingestion Baseline — Design
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
 ---
 
@@ -31,9 +28,7 @@ The golden dataset ([Decision
 system to measure. Eval-first means the first pipeline's job is to be an
 honest, measurable baseline whose pieces swap cheaply under eval pressure
 ([Decision 0004](/docs/decisions/0004-ports-and-adapters-lite.md)) — not
-to be good. Full design in the
-[spec](/specs/ingestion-baseline-design.md);[^ingestion-spec] this record
-distills the durable choices.
+to be good.
 
 # Decision
 
@@ -68,9 +63,10 @@ coexists as two documents.
 ## The persisted chunk gains extension points
 
 The 0005 payload contract is extended with `kind: str = "text"` and
-`metadata: dict` (flows into the schemaless payload untouched). Future
-table/image work slots in as `kind="table"` / `kind="image_caption"` +
-metadata, no entity or contract redesign. Embeddings are **not** an entity
+`metadata: dict` (flows into the schemaless payload untouched). Table and
+image work slot in as `kind="table"` / `kind="image_caption"` + metadata,
+with no entity or contract redesign — which is why the extension points
+are there. Embeddings are **not** an entity
 field: vectors pair with chunks positionally and live only in Qdrant
 (hybrid search will make them plural per point).
 
@@ -108,10 +104,6 @@ persisted — a blob directory, still not a relational DB.
 - Every baseline choice above is an eval-tunable, swapped at the
   composition root or in `src/ingestion/`, gated by before/after runs per
   the [Development Workflow](/docs/development-workflow.md).
-
-[^ingestion-spec]:
-    Naive Ingestion Baseline — Design: route contract, entities, ports,
-    test plan, deferred image pipeline.
 
 [^corpus-findings]:
     Case Files Corpus Findings — CESTARI broken CMap, measured

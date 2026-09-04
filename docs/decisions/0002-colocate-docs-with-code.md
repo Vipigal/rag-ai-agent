@@ -42,7 +42,7 @@ to carry frontmatter with a `type`. With the whole repo as the bundle:
 - `okf_spec.md` (now `/docs/okf-spec.md`) received a minimal `type: Reference` frontmatter block; the
   spec text itself remains verbatim.
 - **Exemption**: the repo-root `README.md` (when created) stays plain
-  markdown — GitHub renders it as the landing page evaluators read first,
+  markdown — GitHub renders it as the landing page a reader opens first,
   and OKF frontmatter there would hurt the _Developer UX_
   [golden rule](/docs/golden-rules.md). Tool-mandated markdown (e.g.
   `CLAUDE.md`, CI or PR templates) falls under the same exemption. This is a deliberate,

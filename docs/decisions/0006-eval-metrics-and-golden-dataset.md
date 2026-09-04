@@ -8,14 +8,11 @@ generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:19:48Z }
 verified: { by: human:vinicius, at: 2026-08-31T22:15:00Z }
 sources:
   - id: eval-metrics
-    resource: /research/rag-eval-metrics-evidence.md
+    resource: /docs/research/rag-eval-metrics-evidence.md
     title: RAG Eval Metrics Evidence
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
-  - id: spec
-    resource: /specs/eval-structure-design.md
-    title: Eval Structure & Golden Dataset — Design
 ---
 
 # Context
@@ -27,8 +24,7 @@ experiment on before/after evals — but no metrics or dataset existed. The
 evidence gathered on RAG evaluation[^eval-metrics] and the corpus
 survey[^corpus-findings] (4 trilingual manuals, exact identifiers, heavy
 tables, meaningful figures, one broken text layer, and no fixed chunking
-yet) constrain what ground truth can even look like. Full design in the
-spec.[^spec]
+yet) constrain what ground truth can even look like.
 
 # Decision
 
@@ -63,8 +59,9 @@ token-overlap path against OCR output.
 `unanswerable` negatives. Quotas: personas (`operator` colloquial pt-BR /
 `technical`) ≈ 50/50, ≥15 `table_lookup`, ~8 `figure` (gate) + ~5
 `image_content` (`requires_image: true`, diagnostic-only until multimodal
-ingestion lands), ≥10 cross-lingual, ~8 multi-excerpt. Schema in the
-spec.[^spec]
+ingestion lands), ≥10 cross-lingual, ~8 multi-excerpt. The case schema is
+the YAML itself; the rules a case is written by live with the
+[Golden Dataset](/evals/golden/golden-dataset.md).
 
 # Alternatives rejected
 
@@ -90,13 +87,11 @@ spec.[^spec]
   input contract, computes gates deterministically, takes `k` as a
   parameter, and slices metrics by `persona`, `language`, `category`,
   `document`.
-- Open questions deferred to the harness: token-overlap threshold (needs
-  value + test once chunking exists), judge model/temperature pinning,
-  RAGAS vs hand-rolled diagnostics. Resolved 2026-09-02: the threshold is
-  0.6 (harness spec); the answer gates are hand-rolled and deterministic,
-  and the judge is deferred indefinitely — the owner judges red cases from
-  the per-case results JSON ([Answer Eval — Design & Implementation
-  Plan](/specs/answer-eval-design.md), owner decision 2026-09-01).
+- The token-overlap threshold is **0.6**, chosen against the real corpus
+  once chunking existed and recorded in every results JSON. The answer
+  gates are hand-rolled and deterministic; there is **no LLM judge** —
+  red cases are read from the per-case results JSON, which is written for
+  exactly that (owner decision 2026-09-01).
 - Every wrong answer found in manual use becomes a case before it is fixed
   (per the [Development Workflow](/docs/development-workflow.md)).
 - Serves _Retrieval_ and _Functionality_ (the two crux Golden Rules)
@@ -109,7 +104,3 @@ spec.[^spec]
 [^corpus-findings]:
     Case Files Corpus Findings — CESTARI broken CMap text
     layer; tables/figures survey.
-
-[^spec]:
-    Eval Structure & Golden Dataset — Design (full schema,
-    distribution, authoring process).

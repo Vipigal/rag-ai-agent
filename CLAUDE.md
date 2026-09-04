@@ -2,7 +2,7 @@
 
 RAG question-answering system over uploaded PDFs, built for an ML
 Engineering interview challenge. Python. The full brief lives in
-`docs/challenge.md`.
+`docs/challenge.pdf`.
 
 ## Start every session here
 
@@ -11,9 +11,9 @@ Engineering interview challenge. Python. The full brief lives in
    Follow its links progressively into whatever concepts are relevant to
    your task.
 2. Load `docs/golden-rules.md` into context and keep it there. It holds the
-   challenge's six evaluation criteria (Functionality, Retrieval, LLM Use,
-   Code Quality, API Design, Developer UX). They are the north star: every
-   task, tradeoff, and review is resolved in their favor.
+   project's six priorities (Functionality, Retrieval, LLM Use, Code
+   Quality, API Design, Developer UX). They are the north star: every task,
+   tradeoff, and review is resolved in their favor.
 3. Knowledge is co-located with code: before working inside a module
    directory, read the `.md` concepts sitting next to its code.
 
@@ -49,7 +49,7 @@ high-level idea (one paragraph), the intended `type`, and the intended
 path/filename — then wait for an explicit OK (see the approval gate in
 `docs/authoring-guide.md`). Updating existing concepts and the
 `index.md`/`log.md` ritual need no proposal. Research findings go in
-`research/`, not loose in `docs/`.
+`docs/research/`.
 
 Because the repo tree is the bundle tree, every `.md` you create must
 carry OKF frontmatter with a `type` (exceptions: `index.md`/`log.md`,

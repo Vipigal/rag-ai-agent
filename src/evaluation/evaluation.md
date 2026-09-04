@@ -7,12 +7,6 @@ status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:27:00Z }
 sources:
-  - id: spec
-    resource: /specs/eval-harness-design.md
-    title: Eval Harness — Design & Implementation Plan
-  - id: answer-spec
-    resource: /specs/answer-eval-design.md
-    title: Answer Eval — Design & Implementation Plan
   - id: decision-0006
     resource: /docs/decisions/0006-eval-metrics-and-golden-dataset.md
     title: 0006 — Eval metrics and golden-dataset shape
@@ -32,9 +26,8 @@ loads and validates the [golden dataset](/evals/golden/golden-dataset.md),
 retrieval gates and slices, `answers.py` scores the answer layer (fact
 containment, citation precision/recall over `(document, page)`, refusals,
 usage), `report.py` builds the committed JSON payload and the colored
-console report, and `run.py` orchestrates a run end to end. Design
-rationale and the full contracts live in the specs;[^spec][^answer-spec]
-metric definitions in Decision 0006.[^decision-0006]
+console report, and `run.py` orchestrates a run end to end. Metric
+definitions are in Decision 0006.[^decision-0006]
 
 # How to run
 
@@ -88,10 +81,10 @@ make eval-fresh label=<label>
 - **Threshold 0.6** balances short table excerpts (0.5 too loose)
   against boundary-split excerpts (0.7+ too strict); runs with different
   thresholds are not comparable, so it is recorded in every results
-  JSON.[^spec]
+  JSON.
 - **Containment is subsumed by overlap**: normalized containment implies
   overlap 1.0, so `is_relevant` has a single code path. The two-path
-  description in Decision 0006 remains the semantic reading.[^spec]
+  description in Decision 0006 remains the semantic reading.
 - **The per-case results block is written for eyeballs**: each case
   carries its question, `notes` (the trap it tests), every gate metric's
   per-case contribution, and the bidirectional excerpt↔chunk pairing
@@ -160,7 +153,8 @@ make eval-fresh label=<label>
   adapter therefore builds one pydantic-ai `Embedder` per thread (see the
   [Retrieval Module](/src/retrieval/retrieval.md)) — the shared-client
   failure was measured on 2026-09-02 before the first run. Each LLM call
-  still opens a cold connection (an open question of the spec).
+  opens its own connection; at this dataset's size the connection cost is
+  inside the run-to-run noise of the latency figures.
 - **Comparison prefers a like run.** An `--answers` run compares against
   the latest result with the same `k`/threshold that also carries an
   `answers` block; if none exists, the retrieval deltas come from the
@@ -211,10 +205,6 @@ the gate movement, the cases that flipped and the mechanism behind them,
 the negative results, and the failure axes that remain. The answer
 layer's first runs are chain 4 there. This concept stays about *how* to
 run and read the harness; that one is about *what the runs taught*.
-
-[^spec]: Eval Harness — Design & Implementation Plan.
-
-[^answer-spec]: Answer Eval — Design & Implementation Plan: the answer layer's contracts, populations, normalization rules, error semantics and cost analysis.
 
 [^decision-0006]: 0006 — Eval metrics and golden-dataset shape.
 

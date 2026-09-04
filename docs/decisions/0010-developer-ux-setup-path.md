@@ -1,7 +1,7 @@
 ---
 type: Decision
-title: 0010 — Developer UX for examiners: .env.example, make install, Python ≥ 3.12, foreground compose behind a Qdrant healthcheck, ingestion progress logs
-description: The setup path an evaluator walks is a product surface — a committed .env.example with every knob, make install with a Python 3.12 floor (3.14 no longer pinned), guarded make targets that fail with the next command to run, docker compose in the foreground gated on a Qdrant healthcheck, and per-file ingestion progress logs so the ~60 s corpus upload is visibly alive.
+title: 0010 — Developer UX: .env.example, make install, Python ≥ 3.12, foreground compose behind a Qdrant healthcheck, ingestion progress logs
+description: The setup path a newcomer walks is a product surface — a committed .env.example with every knob, make install with a Python 3.12 floor (3.14 no longer pinned), guarded make targets that fail with the next command to run, docker compose in the foreground gated on a Qdrant healthcheck, and per-file ingestion progress logs so the ~60 s corpus upload is visibly alive.
 tags: [developer-ux, makefile, docker-compose, python-version, logging, env]
 status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:55:04Z }
@@ -27,9 +27,9 @@ sources:
 
 # Context
 
-An evaluator has 30–60 minutes with this repo, and the _Developer UX_
-[golden rule](/docs/golden-rules.md)[^golden-rules] says setup friction is
-a bug. A review of the repo from the evaluator's seat (2026-09-01) listed
+Someone meeting this repo for the first time has 30–60 minutes with it, and
+the _Developer UX_ [priority](/docs/golden-rules.md)[^golden-rules] says
+setup friction is a bug. A first-run review of the repo (2026-09-01) listed
 the friction:
 
 - No `.env.example`: the only way to learn that `OPENAI_API_KEY` is
@@ -76,7 +76,7 @@ curated five-minute path is the README's job and is out of scope here.
   stays `python:3.14-slim`, the interpreter every live smoke ran on. The
   floor is verified, not assumed — see Consequences.
 - **`make up` runs compose in the foreground** (`docker compose up
-  --build`): the evaluator watches the build, Qdrant's startup, uvicorn,
+  --build`): you watch the build, Qdrant's startup, uvicorn,
   and every request; Ctrl-C stops the stack. Supersedes 0003's detached
   `-d`.
 - **Qdrant healthcheck + `depends_on: condition: service_healthy`.** The
@@ -124,7 +124,7 @@ curated five-minute path is the README's job and is out of scope here.
 
 # Consequences
 
-- Evaluator path: `cp .env.example .env` → set the key → `make up` in
+- Setup path: `cp .env.example .env` → set the keys → `make up` in
   one terminal; `make install` then `make test` for the suite on any
   Python ≥ 3.12.
 - Verified 2026-09-02 with the pinned `requirements-dev.txt`: the suite

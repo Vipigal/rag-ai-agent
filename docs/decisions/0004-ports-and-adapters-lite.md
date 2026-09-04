@@ -8,7 +8,7 @@ generated: { by: claude_code/claude-fable-5, at: 2026-08-31T20:58:29Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:25:00Z }
 sources:
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
   - id: cosmic-python
     resource: https://www.cosmicpython.com

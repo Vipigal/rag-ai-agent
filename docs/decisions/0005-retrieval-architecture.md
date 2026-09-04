@@ -8,10 +8,10 @@ generated: { by: claude_code/claude-fable-5, at: 2026-08-31T21:16:46Z }
 verified: { by: human:vinicius, at: 2026-08-31T21:25:00Z }
 sources:
   - id: retrieval-evidence
-    resource: /research/retrieval-strategy-evidence.md
+    resource: /docs/research/retrieval-strategy-evidence.md
     title: Retrieval Strategy Evidence
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
   - id: qdrant-docs
     resource: https://qdrant.tech/documentation/
@@ -68,8 +68,8 @@ makes it structurally impossible.
 ## Embeddings: provider-first, port-guarded
 
 `EmbeddingModel` adapters may call frontier provider APIs (OpenAI, Gemini —
-reusing the same `OPENAI_API_KEY`/`GEMINI_API_KEY` the evaluators already
-supply for the LLM, so no extra setup burden) or run locally (fastembed,
+reusing the same `OPENAI_API_KEY`/`GEMINI_API_KEY` already supplied for the
+LLM, so no extra setup burden) or run locally (fastembed,
 useful as an eval baseline). No default is baked in; evals arbitrate.
 Whatever the adapter, it must handle the corpus's languages (PT + EN +
 ES[^corpus-findings]).

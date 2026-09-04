@@ -83,7 +83,7 @@ Knowledge lives **as close as possible to what it describes**:
   sequence for the whole project). Module concepts link to the decisions
   that shaped them.
 - **Research findings** — corpus surveys, gathered external evidence,
-  benchmark digests — live in `research/`, not `docs/`. They are `type:
+  benchmark digests — live in `docs/research/`. They are `type:
   Reference` concepts kept as a **backlink source**: decisions and module
   concepts cite them in `sources` entries instead of re-researching.
 - Any directory holding **two or more concepts** gets an `index.md`
@@ -146,11 +146,10 @@ sources: # when the concept derives from material — cite it
 | `Policy`       | Non-negotiable rules (e.g. the Golden Rules).                   |
 | `Playbook`     | Processes and how-tos agents must follow.                       |
 | `Decision`     | One decision: context, options, choice, consequences.           |
-| `Reference`    | Mirrors or summaries of external material (e.g. the challenge). |
+| `Reference`    | Mirrors or summaries of external material (e.g. the OKF spec, gathered evidence). |
 | `Architecture` | Descriptions of system structure and its rationale.             |
 | `Module`       | A co-located overview of one code module: purpose, boundaries, and the decisions behind it. |
 | `Glossary`     | Ubiquitous language: `docs/glossary.md` project-wide, `glossary.md` co-located per module. |
-| `Spec`         | An approved design for a subsystem before it is built, in `specs/` at the repo root; decision records distill its durable choices. |
 
 New types are allowed when none fits — pick a descriptive name and add it
 to this table.

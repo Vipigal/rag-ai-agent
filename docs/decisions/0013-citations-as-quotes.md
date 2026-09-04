@@ -3,11 +3,11 @@ type: Decision
 title: 0013 — Citations are verbatim passages resolved by containment; references are the quotes
 description: The model no longer names chunk ids — AgentReply.citations is a list of passages copied verbatim from the chunks it read; AgentService resolves each quote by normalized, line-wise containment over the chunks the model saw, keeps the ones it finds as Reference(chunk, quote, retrieval_source), drops and counts the rest, and POST /question returns the quotes as references, matching the challenge's excerpt-shaped contract; the <chunk> rendering lost its id attribute and the seed-page fallback for uncited answers is gone. Short per-page ids, enum-constrained UUIDs, an {chunk_id, quote} pair, page or seed fallbacks, provenance on the wire and fuzzy alignment were rejected; the before/after pair of answer-eval runs is recorded.
 tags: [agent, citations, references, prompt, structured-output, api-contract, evals]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T22:19:37Z }
 sources:
   - id: challenge
-    resource: /docs/challenge.md
+    resource: /docs/challenge.pdf
     title: Challenge Brief
   - id: decision-0009
     resource: /docs/decisions/0009-structured-reply-function-tools.md
@@ -15,15 +15,9 @@ sources:
   - id: decision-0012
     resource: /docs/decisions/0012-page-chunks-unit-vectors-and-providers.md
     title: 0012 — Retrieval granularity and providers
-  - id: answer-spec
-    resource: /specs/answer-eval-design.md
-    title: Answer Eval — Design & Implementation Plan
   - id: findings
     resource: /evals/results/experiment-findings.md
     title: Eval Experiment Findings
-  - id: next-steps
-    resource: /docs/next-steps.md
-    title: Next Steps — Handoff from the 2026-09-02 session
   - id: glossary
     resource: /docs/glossary.md
     title: Project Glossary
@@ -35,7 +29,7 @@ sources:
 # Context
 
 > **Amended by chain 7 of the [findings](/evals/results/experiment-findings.md)**
-> (2026-09-04): the follow-up this record left open — *`unmatched_citations`
+> (2026-09-04): the follow-up this record named — *`unmatched_citations`
 > decides whether the quoting rule needs tightening, not before it is
 > measured* — came due. Reading the 14 passages `LLM_THINKING=low` had cost
 > gave three rules now in `SYSTEM_PROMPT`: never abridge a passage, never
@@ -53,7 +47,7 @@ says `references` "carries the retrieved source excerpts that ground the
 answer".[^challenge] Since [Decision 0012](/docs/decisions/0012-page-chunks-unit-vectors-and-providers.md)
 made the chunk a whole page, `POST /question` returned pages of up to
 6,000 characters as references: retrieval improved and the wire contract
-got worse ([Next Steps](/docs/next-steps.md) section 4).[^decision-0012][^next-steps]
+got worse.[^decision-0012]
 
 Two facts from the answer layer's first runs shaped the design
 ([findings](/evals/results/experiment-findings.md), chain 4):[^findings]
@@ -115,7 +109,7 @@ returns text the model did not quote.
 The answer eval keeps its `(document, page)` citation gates unchanged
 (they now read the resolved chunks) and gains, per case, the quoted
 passages and `unmatched_citations`, with the run total on the `ANSWER
-DIAG` line as `unmatched quotes N`.[^answer-spec][^eval-module] That
+DIAG` line as `unmatched quotes N`.[^eval-module] That
 counter is the design's own risk indicator: how often the model fails to
 quote what it read.
 
@@ -179,11 +173,13 @@ dropped quotes that drove the rules, are read in the findings, chain
 - **What stands from Decision 0009**: the provider-enforced structured
   reply, function-derived tools, the XML context in a system message, the
   `dict[str, RetrievedChunk]` memory keyed by chunk id (internal only).
-- **Follow-ups**: ~~`unmatched_citations` decides whether the quoting rule
-  needs tightening~~ — measured and acted on in chain 7 (the amendment
-  above). What remains is the **table row**: the residual dropped quotes
-  are rows the model reshapes as it copies, which is where a minimum quote
-  length or a row-aware normalizer would go next.
+- **What the counter showed**: `unmatched_citations` was built to decide
+  whether the quoting rule needed tightening, and it did exactly that —
+  measured, then acted on in chain 7 (the amendment above). It also
+  characterized the design's one residual limit: the passages still
+  dropped are **table rows**, which the model reshapes as it copies, so
+  containment refuses them. The counter makes that visible per run
+  instead of letting it pass as a silent citation.
 - Rules served: **API Design** and **Functionality** (the contract's
   excerpts), **LLM Use** (the prompt asks for the minimal supporting
   passage and the system verifies it), **Code Quality** (no second
@@ -195,11 +191,7 @@ dropped quotes that drove the rules, are read in the findings, chain
 
 [^decision-0012]: 0012 — Retrieval granularity: the chunk is the page, which made whole-page references the wire's shape.
 
-[^answer-spec]: Answer Eval — Design & Implementation Plan: the citation gates over `(document, page)` this decision leaves unchanged.
-
 [^findings]: Eval Experiment Findings — chain 4 (citation precision 0.70 with ids) and chain 5 (the pair above).
-
-[^next-steps]: Next Steps — section 4, the problem statement and the original sketch.
 
 [^glossary]: Project Glossary — citation and reference, redefined by this decision.
 

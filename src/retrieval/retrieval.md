@@ -3,7 +3,7 @@ type: Module
 title: Retrieval Module
 description: The read side's adapters — PydanticAiEmbeddingModel over pydantic-ai's Embedder (OpenAI or Google behind one EMBEDDING_MODEL value, documents and queries embedded with their task types, batched per provider), QdrantVectorStore holding one multivector point per chunk scored by MaxSim (upserts batched under Qdrant's JSON limit, incompatible collections refused with the fix named) and VectorRetriever, the one Retriever strategy — with what the code cannot say: why the query is a one-row multivector, why the vector size is a registry at the composition root, what switching the embedder costs, the measured numbers, and how to test all of it without Docker.
 tags: [retrieval, qdrant, multivector, embeddings, pydantic-ai, vector-store, retriever]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T20:19:48Z }
 verified: { by: human:vinicius, at: 2026-09-02T19:02:00Z }
 sources:
@@ -153,7 +153,7 @@ changes the store's shape.
 
 [^ingestion-module]: Ingestion Module — the page chunker and `embedding_units`, which decide what this module stores.
 
-[^findings]: Eval Experiment Findings — the runs behind the numbers and the experiments queued behind the `Retriever` port.
+[^findings]: Eval Experiment Findings — the runs behind the numbers, and the alternatives measured against this port.
 
 [^qdrant-multivectors]: Qdrant — Vectors: multivector configuration and the MaxSim comparator.
 

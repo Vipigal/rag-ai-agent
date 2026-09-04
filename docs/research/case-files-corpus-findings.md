@@ -3,7 +3,7 @@ type: Reference
 title: Case Files Corpus Findings
 description: Empirical survey of the four case_files PDFs — languages, structure, extraction quality — including the CESTARI fonts that lack a ToUnicode map (glyph ids intact in Arial's standard order, repairable without OCR) and measured pymupdf4llm 1.28.2 behavior on this corpus.
 tags: [corpus, ingestion, pdf-extraction, pymupdf4llm, ocr]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T04:20:00Z }
 verified: { by: human:vinicius, at: 2026-08-31T19:49:00Z }
 sources:

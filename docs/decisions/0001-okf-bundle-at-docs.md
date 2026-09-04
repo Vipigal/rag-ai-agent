@@ -39,7 +39,7 @@ The knowledge bundle is rooted at `docs/`, as a bundle-in-a-subdirectory
   markdown (license, CI templates) non-conformant or force frontmatter
   onto files that other tools expect to be plain.
 - A clean separation keeps the repo root for code, config, and the
-  README that evaluators read first (serving the _Developer UX_
+  README a reader opens first (serving the _Developer UX_
   [golden rule](/docs/golden-rules.md)), while `docs/` stays a self-contained,
   distributable knowledge bundle.
 - The spec is not knowledge _about this project_; it is the format's own

@@ -1,13 +1,13 @@
 ---
 type: Decision
-title: 0014 — Error semantics for the examiner: one body shape, four statuses, fail-fast startup, a readiness check and a documented OpenAPI
+title: 0014 — Error semantics: one body shape, four statuses, fail-fast startup, a readiness check and a documented OpenAPI
 description: Every API error is {"detail": "<one sentence naming the culprit and the fix>"} and the status says who is at fault — 422 the request (blank question, non-PDF, unreadable PDF, nothing indexed), 502 an LLM or embedding provider after the fallback or an unusable reply, 503 a dependency or the configuration (Qdrant unreachable or incompatible, provider key missing), 500 only as a catch-all that still names the exception and logs the traceback; adapters translate infrastructure failures into domain errors (UnreadableDocument) or keep the library's typed exceptions, the extractor rejects corrupt, password-protected and page-less PDFs, ingestion extracts every file before storing any, a malformed structured reply is requested once more before it is a 502 (reversing the deliberate 500 of Decision 0009), the FastAPI lifespan validates the configuration and the vector store at startup so make up fails naming the missing key, make check-env refuses empty keys, GET /health reports the vector store, the indexed chunk count and the configured models, and every route and model carries summaries, descriptions, real examples and the declared error statuses.
 tags: [api, errors, openapi, developer-ux, startup, health, fastapi, pydantic-ai, qdrant]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
 sources:
   - id: challenge
-    resource: /docs/challenge.md
+    resource: /docs/challenge.pdf
     title: Challenge Brief
   - id: golden-rules
     resource: /docs/golden-rules.md
@@ -16,8 +16,8 @@ sources:
     resource: /docs/decisions/0009-structured-reply-function-tools.md
     title: 0009 — Structured agent reply, function-derived tools, chunk ids as citation handles
   - id: decision-0010
-    resource: /docs/decisions/0010-examiner-developer-ux.md
-    title: 0010 — Developer UX for examiners
+    resource: /docs/decisions/0010-developer-ux-setup-path.md
+    title: 0010 — Developer UX: the setup path
   - id: llm-module
     resource: /src/llm/llm.md
     title: LLM Module
@@ -34,8 +34,8 @@ sources:
 
 # Context
 
-A review of the repository from the examiner's seat (2026-09-02) walked
-every failure an evaluator could hit in the first ten minutes and provoked
+A first-run review of the repository (2026-09-02) walked
+every failure a user could hit in the first ten minutes and provoked
 each one. Eight of them reached the client as FastAPI's bare
 `Internal Server Error`: a PDF with a `%PDF` header but corrupt content
 (`pymupdf.FileDataError`), a truncated PDF that opens with zero pages
@@ -52,12 +52,12 @@ chose a 500 for a schema-violating reply "so it is investigated, not
 retried", and the LLM module documented configuration errors as "500 on
 purpose".[^decision-0009][^llm-module] The OpenAPI page showed
 auto-generated summaries ("Upload Documents"), no descriptions, no
-examples and no error statuses — while the challenge's **API Design**
-criterion reads "clear, documented, intuitive endpoints" and **Developer
-UX** "easy to set up, test, and understand".[^golden-rules]
+examples and no error statuses — while the **API Design** priority reads
+"clear, documented, intuitive endpoints" and **Developer UX** "easy to set
+up, test, and understand".[^golden-rules]
 
 The owner's direction: format the OpenAPI documentation and minimise the
-chance that the examiner ever sees a generic 500.
+chance that anyone calling the API ever sees a generic 500.
 
 # Decision
 
@@ -117,7 +117,7 @@ rejects a text reply, and raises `UnexpectedModelBehavior` with the
 offending body only when the second attempt fails too; both attempts count
 in `Usage`. This reverses Decision 0009's deliberate 500: a strict native
 schema makes a malformed reply rare (1 in 93), so one retry hides it from
-the examiner at no cost on the happy path, and when it persists the
+the caller at no cost on the happy path, and when it persists the
 status names the model rather than the server.[^decision-0009]
 
 ## 5. Fail at startup, not on the first request
@@ -131,7 +131,7 @@ vector store reached and its collection checked. A failure is logged as
 `startup failed: …` and re-raised, so uvicorn exits with the message in
 the `make up` terminal before any upload. One layer earlier,
 `make check-env` refuses a `.env` whose keys are empty, naming the
-variable (extending [Decision 0010](/docs/decisions/0010-examiner-developer-ux.md)'s
+variable (extending [Decision 0010](/docs/decisions/0010-developer-ux-setup-path.md)'s
 rule that a failed prerequisite names the next command).[^decision-0010]
 
 ## 6. `GET /health` is a readiness check
@@ -154,18 +154,18 @@ challenge's wire contract is unchanged, byte for byte.
 # Alternatives rejected
 
 - **Serving with an invalid configuration and answering 503 per request.**
-  Quieter than a startup failure; the examiner would discover it on the
-  first upload instead of in the `make up` terminal.
+  Quieter than a startup failure; it would surface on the first upload
+  instead of in the `make up` terminal.
 - **Keeping the 500 for schema violations** (Decision 0009). The strict
   schema makes the event rare, but the eval showed it happens; "investigate,
   not retry" is the right posture for a bug and the wrong one for a
-  provider hiccup in front of an evaluator.
+  provider hiccup in front of a user.
 - **Catching pymupdf's exceptions in the route.** The domain must stay free
   of the library, and the route would not have the filename the message
   needs; the adapter is where infrastructure exceptions become domain
   language.
 - **A `500` catch-all without the exception's name.** Hiding the type
-  protects internals; for a challenge whose evaluator runs the code
+  protects internals; when whoever hits the error is running the code
   locally, a named failure is worth more than the secrecy.
 - **A per-request check of the LLM provider in `/health`.** It would cost
   an LLM call per probe; the health check reports the configured model
@@ -197,7 +197,7 @@ challenge's wire contract is unchanged, byte for byte.
 
 [^decision-0009]: 0009 — the deliberate 500 for a schema-violating reply, reversed here.
 
-[^decision-0010]: 0010 — the examiner-facing setup rule this decision extends to the keys and to startup.
+[^decision-0010]: 0010 — the setup rule this decision extends to the keys and to startup.
 
 [^llm-module]: LLM Module — the adapter's retry, the exception classes and how they reach the edge.
 

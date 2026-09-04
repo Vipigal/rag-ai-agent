@@ -8,17 +8,11 @@ generated: { by: claude_code/claude-fable-5, at: 2026-09-02T02:18:30Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:22:00Z }
 sources:
   - id: llm-evidence
-    resource: /research/llm-adapter-library-evidence.md
+    resource: /docs/research/llm-adapter-library-evidence.md
     title: LLM Adapter Library Evidence
-  - id: spec
-    resource: /specs/question-agent-design.md
-    title: Question Agent — Design
   - id: decision-0005
     resource: /docs/decisions/0005-retrieval-architecture.md
     title: "0005 — Retrieval architecture"
-  - id: eval-harness-spec
-    resource: /specs/eval-harness-design.md
-    title: Eval Harness — Design & Implementation Plan
   - id: baseline
     resource: /evals/results/20260901-190240-baseline.json
     title: Retrieval baseline run (2026-09-01, commit f518762, dirty tree)
@@ -40,7 +34,7 @@ the port, which retrieved chunks become the challenge's `references`, and
 how the eval harness invokes the system.[^decision-0005] Evidence on five
 candidate libraries was gathered against primary sources,[^llm-evidence]
 and the read side landed with a measured retrieval
-baseline.[^baseline] Full design in the spec.[^spec]
+baseline.[^baseline]
 
 # Decision
 
@@ -74,7 +68,7 @@ gate; citation forces selectivity.
 Answer evals call `AgentService.answer(question) -> Answer` directly
 (references structured: full `Chunk` + score + source), matching the
 harness's runner and giving citation scoring `(chunk.filename,
-chunk.page)` with no string parsing.[^eval-harness-spec] The HTTP route
+chunk.page)` with no string parsing. The HTTP route
 stays byte-compatible with the challenge (references as verbatim excerpt
 strings) and is covered by TDD integration tests instead.
 
@@ -121,10 +115,6 @@ on-vs-off[^decision-0005]).
 
 [^llm-evidence]: LLM Adapter Library Evidence — measured dependency weight, documented caller-owned APIs, `FallbackModel` and Gemini extras, conflict pins.
 
-[^spec]: Question Agent — Design: vocabulary, service flow, prompt requirements, route, config, test and eval plans.
-
 [^decision-0005]: Decision 0005 — dual-path answering, domain-owned tool loop, tool toggle, per-path reference measurement.
-
-[^eval-harness-spec]: Eval Harness — Design & Implementation Plan — in-process runner and the coordinated `(question) -> Answer` contract.
 
 [^baseline]: Retrieval baseline run 20260901-190240 (f518762, dirty tree) — precision@5 0.24, per-case retrieval latency median 342 ms (mean 548 / p95 2518 ms, five cold-connection outliers above 2 s).

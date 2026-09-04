@@ -3,7 +3,7 @@ type: Reference
 title: RAG Eval Metrics Evidence
 description: External evidence gathered 2026-08-31 on RAG evaluation metrics — retrieval (recall@k, MRR, precision, NDCG, MAP), answer quality (correctness, faithfulness, relevancy, citation quality), chunking-independent ground-truth encoding, LLM-as-judge pitfalls, and efficiency logging — to ground the golden-dataset and eval-harness decisions.
 tags: [evals, metrics, retrieval, llm-as-judge, golden-dataset]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-08-31T21:33:12Z }
 verified: { by: human:vinicius, at: 2026-08-31T22:55:00Z }
 sources:

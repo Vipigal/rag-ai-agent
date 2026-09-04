@@ -50,7 +50,7 @@ grounded in the uploaded documents. They are as much a deliverable as the
 code.
 
 - **Corpus**: the PDFs in `case_files/` (see the
-  [Challenge Brief](/docs/challenge.md)) are the reference corpus — real motor
+  brief) are the reference corpus — real motor
   manuals in Portuguese and English, matching the challenge's example
   question.
 - **Golden dataset**: a curated set of question → expected-answer (and

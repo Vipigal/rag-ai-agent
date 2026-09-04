@@ -3,7 +3,7 @@ type: Reference
 title: LLM Adapter Library Evidence
 description: Evidence gathered 2026-09-01 comparing candidate libraries for the LLM port adapter — OpenAI SDK direct, LangChain deepagents (vs plain init_chat_model), Strands Agents, PydanticAI, LiteLLM — on loop ownership, dependency weight, latency-overhead evidence, multi-provider support, and maturity, against the domain-owned tool loop of Decision 0005.
 tags: [llm, adapters, tool-calling, frameworks, dependencies]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-01T16:26:51Z }
 verified: { by: human:vinicius, at: 2026-09-01T17:25:00Z }
 sources:

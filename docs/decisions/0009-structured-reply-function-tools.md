@@ -10,9 +10,6 @@ sources:
   - id: decision-0008
     resource: /docs/decisions/0008-question-agent-baseline.md
     title: 0008 — Question agent baseline
-  - id: spec
-    resource: /specs/question-agent-design.md
-    title: Question Agent — Design & Implementation Plan
   - id: arch
     resource: /docs/architecture.md
     title: System Architecture — Ports & Adapters Lite
@@ -48,7 +45,7 @@ the agent reports what grounds its answer: the model writes `[i]`
 markers inline, refuses with a `NO_ANSWER` sentinel, and declares its one
 tool as a `ToolSpec` carrying a verbatim JSON schema.[^decision-0008] The
 first implementation landed on 2026-09-01 exactly that way and worked in
-the live smoke.[^spec] The owner's code review then raised four
+the live smoke. The owner's code review then raised four
 objections, all of which held up under verification against the
 installed `pydantic-ai-slim` 2.37.0:
 
@@ -198,8 +195,6 @@ the renderer live in `src/domain/services/prompts.py` using the stdlib
   _Functionality_ (a whole class of silent failures removed).
 
 [^decision-0008]: 0008 — Question agent baseline: the `[i]` protocol, `NO_ANSWER` sentinel, seed fallback and `ToolSpec` vocabulary this record amends.
-
-[^spec]: Question Agent — Design & Implementation Plan: the landed implementation and its live-smoke findings (2026-09-01).
 
 [^arch]: System Architecture — rule 1 (stdlib-only domain), the entity definition, rule 9 (the loop lives in `AgentService`).
 

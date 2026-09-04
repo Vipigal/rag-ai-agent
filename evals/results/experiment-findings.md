@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Eval Experiment Findings
-description: What each committed eval run taught and why — the 2026-09-02 ingestion chain step by step (font repair, page cleaning, structured chunking, contextualized embeddings), the chunking-core chain that followed (fontTools refactor proven equivalent, page chunks with per-unit vectors at +0.05 recall), the embedder chain (gemini-embedding-001 at +0.09 recall, six of eleven cross-lingual cases, 8× the token price in cents) the answer layer's first two runs (chain 4 — fact recall 0.93, citation precision 0.70, the query_knowledge tool neutral on the gates, the reds grouped by cause: retrieval misses become confident wrong answers) the citations-as-quotes change (chain 5 — citation precision up because a quote is a commitment, the normalizer rules learned from dropped quotes, a malformed provider reply, the broken async upload route) the latency chain (chain 6 — reasoning tokens were 85–94 % of the output at the provider's default effort; thinking low cut the mean answer time 16.0 → 5.9 s and the run's cost $0.29 → $0.18 with the gates inside noise, at the price of twice the dropped quotes) and the prompt chain (chain 7 — the quote rules read off the 14 dropped passages took them to 8 and answers citing nothing from 3 to 1, and the answer-language rule only held once restated after the chunks, 1-in-5 to 7-in-8 live, at the price of one unanswerable control), with the cases that flipped and the mechanism behind each move, the negative results, the measured-not-built probes (section-level parents, the cross-lingual residue where translating the question recovers 3 of 4 reds), the discoveries made along the way, and the failure axes that remain, so the next experiment starts from evidence instead of intuition.
+description: What every committed eval run taught and why — seven measured chains that took recall@5 from 0.65 to 0.95 and reshaped the answer layer, which cases flipped at each step and the mechanism behind each move, the negative results kept on the record, and the probes run before building anything.
 tags:
   [
     evals,
@@ -13,7 +13,7 @@ tags:
     answers,
     negative-results,
   ]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T18:42:00Z }
 sources:
@@ -30,14 +30,11 @@ sources:
     resource: /evals/golden/golden-dataset.md
     title: Golden Dataset
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
   - id: retrieval-evidence
-    resource: /research/retrieval-strategy-evidence.md
+    resource: /docs/research/retrieval-strategy-evidence.md
     title: Retrieval Strategy Evidence
-  - id: answer-spec
-    resource: /specs/answer-eval-design.md
-    title: Answer Eval — Design & Implementation Plan
 ---
 
 # Why this concept exists
@@ -233,12 +230,13 @@ skipped on purpose.
   and the granularity the model should read (large)**. Decoupling them
   beat every boundary variant, with less code than any of them.
 
-## Where the twelve remaining red cases are
+## Where the red cases concentrate after chain 2
 
-Eleven are Portuguese questions over the English manuals (`lb5001-003,
+Twelve remain. Eleven are Portuguese questions over the English manuals (`lb5001-003,
 -004, -008`, `mn414-002, -004, -006, -010, -012, -014, -016` plus the
-image-only `mn414-017`) and one is `weg-guia-013`. The cross-lingual axis
-is now the whole remaining gap on retrieval.
+image-only `mn414-017`) and one is `weg-guia-013`. Ingestion had exhausted
+what it could reach: the gap was now a single axis, cross-lingual
+embedding, and chain 3 went straight at it.
 
 # Chain 3 — the embedder (2026-09-02, owner's choice)
 
@@ -294,8 +292,7 @@ call as before and was not re-run.
 
 # Chain 4 — the answer layer (2026-09-02)
 
-The harness's answer layer ([Answer Eval — Design & Implementation
-Plan](/specs/answer-eval-design.md))[^answer-spec] landed and ran twice
+The harness's answer layer landed and ran twice
 over the chain-3 collection: `openai:gpt-5-mini` behind its
 `google:gemini-3.5-flash` fallback (never triggered), k = 5, 8 workers,
 zero errors in both runs. The retrieval gates are unchanged (0.95 · 0.95 ·
@@ -380,10 +377,9 @@ The 81 answered gated cases cite 1.8 pages each; 44 cite more than one.
 Of the 58 cited pages that are not gold, 40 are another page of the right
 manual (adjacent content, a second table with the same fact) and 18
 another manual — most of them the three cross-lingual reds. This is the
-number [Next Steps](/docs/next-steps.md) section 4 (citations as excerpts)
-will move: a quote cannot repair a wrong-manual citation, but it turns the
-forty "right manual, extra page" references into passages a reader can
-check.
+number chain 5 moves by making each citation a quoted passage: a quote
+cannot repair a wrong-manual citation, but it turns the forty "right
+manual, extra page" references into passages a reader can check.
 
 **Lessons**: the answer layer's reds are dominated by retrieval, then by
 dataset authoring, then by the model; a retrieval red is a wrong answer
@@ -454,8 +450,7 @@ folding what those 18 taught.
   a complete refusal object): two replies in ≈ 650 answers across the seven
   answer runs of the day, both refusals, both in the quotes era. The run
   info does not record which model — the primary or the Gemini fallback —
-  produced a reply, so the provider cannot be blamed by name; carrying
-  `ModelResponse.model_name` into `Usage` is the cheap follow-up. The
+  produced a reply, so the provider is not named here. The
   617 s reply also inflated that pass's mean latency to 21.7 s (15.2 s
   without it).
 - **Answer language on the challenge's question.** Three consecutive live
@@ -463,13 +458,14 @@ folding what those 18 taught.
   manuals produced a Portuguese answer, an English answer and a refusal
   asking which motor was meant. The question is underspecified for this
   corpus, and the language rule slipped once. The harness has no language
-  gate; recorded for a prompt iteration.
-- **`POST /documents` was broken in Docker** since the pydantic-ai
-  embedder landed: the `async def` route ran the synchronous pipeline on
-  uvicorn's loop and `embed_sync` refused with `this event loop is already
-  running`. Found while recapturing the README examples, fixed by making
-  the route a plain `def` (architecture rule 5), verified by re-ingesting
-  the four manuals (164 chunks) through it.
+  gate, so this was read by hand — and it is what chain 7's language rule
+  was written against.
+- **An `async def` route driving a synchronous pipeline.** Recapturing the
+  README examples surfaced it: on uvicorn's loop `embed_sync` refuses with
+  `this event loop is already running`. The route became a plain `def`,
+  which also keeps the CPU-bound extraction off the loop, and the rule is
+  now architecture rule 5. Verified by re-ingesting the four manuals
+  (164 chunks) through it.
 
 ## Live captures
 
@@ -554,16 +550,13 @@ gates are identical by construction (`=` on every row).
   input tokens also fell (689 k → 529 k) because fewer tool rounds re-send
   the prefix. Embedding calls are outside both numbers.
 
-## What this says about the next step
+## What this located
 
 The two gates the change touched are the quoting ones, and their failures
-are copy discipline, not knowledge: a prompt line forbidding `...` inside
-a quote and mixed-language splices is a one-run experiment now that the
-efficiency lines compare latency and cost against the previous run.
-`minimal` is still unmeasured on the eval — the probe's wrong number is
-one observation — and would take the mean toward ≈ 3 s. Cross-lingual
-query translation remains the retrieval lever (three MN414 reds are still
-confident wrong answers at either effort).
+were copy discipline, not knowledge — which made them a prompt problem
+rather than a model-capability one, and therefore a one-run experiment now
+that the efficiency lines compare latency and cost against the previous
+run. Chain 7 is that run.
 
 # Chain 7 — quote discipline and answer language (2026-09-04)
 
@@ -645,9 +638,10 @@ now longer and stable), latency +0.5 s.
 - **The last answer citing nothing** is `weg-guia-018`, a table row
   (`|> 6,3<25|> 8,6<34|12|8,8|`) the model reshapes as it copies. Table
   rows are the residual failure mode of containment-verified citations, as
-  Decision 0013 anticipated; a second LLM pass to repair an empty
-  `references` list was considered and is **not built** — it would add a
-  call on a 1-in-83 path and rebuild the fallback that decision rejected.
+  Decision 0013 anticipated. A second LLM pass to repair an empty
+  `references` list was weighed and **rejected**: it would spend a call on
+  a 1-in-83 path and rebuild exactly the fallback that decision removed —
+  a citation the model did not actually write.
 
 # Reading precision@5 (asked 2026-09-02)
 
@@ -721,7 +715,7 @@ picture text -->`; MN414 pages arrive as single 2,000-character lines
   (Qdrant scroll on `filename` + `page`) — overlap ≥ 0.6 means the loss
   is on the embedding side, below it means extraction or chunking.
 
-# Section-level parents — measured, not built (2026-09-02)
+# Section-level parents — measured before building (2026-09-02)
 
 The owner asked whether small-to-big should return the _section_ instead
 of the page, out of concern for passages and tables cut by a page break.
@@ -754,7 +748,7 @@ cheap design is a `Retriever` decorator that appends the neighbouring
 page when the matched unit is the first or last block of its page — no
 chunker change.
 
-# Cross-lingual residue — measured, not built (2026-09-02)
+# Cross-lingual residue — measured (2026-09-02)
 
 After chain 3, the answerable red cases are four Portuguese questions over
 MN414 (`mn414-004`, `-012`, `-014`, `-016`) plus the image-only
@@ -775,12 +769,12 @@ would produce); rank of the gold page in the top 50:
 
 - **Translating the question recovers 3 of the 4 answerable cases into the
   top five and half of the fourth** — ≈ +0.04 recall@5, the whole
-  remaining non-image gap except the `cestari-009` slot. The lever the
-  queue lacked.
+  remaining non-image gap except the `cestari-009` slot — measured against
+  the committed collection, not estimated.
 - **Two query rows summed by MaxSim are worse than the English row alone**
   on `mn414-016` (12 / 14 against 2 / 6): the Portuguese row adds its
   affinity for Portuguese pages. Fusion should be RRF over two searches,
-  as the [retrieval evidence](/research/retrieval-strategy-evidence.md)
+  as the [retrieval evidence](/docs/research/retrieval-strategy-evidence.md)
   already recommends, not a multi-row query.[^retrieval-evidence]
 - **Cost**: one LLM call per question to translate, before the seed
   retrieval. The agent's `query_knowledge` tool could do the same
@@ -793,36 +787,6 @@ would produce); rank of the gold page in the top 50:
   no recall and drops one page of context per question; `k = 3` loses one
   case.
 
-# What to try next, from this evidence
-
-1. **Cross-lingual query expansion** behind the `Retriever` port: translate
-   the question to the corpus's other language, search both, fuse by RRF;
-   gate on recall@5 (expected +0.04), citation recall and answer latency
-   (one extra LLM call).
-2. **`RETRIEVAL_K=4`**, recorded with a run — same recall, precision@k
-   0.39 → 0.46, one page less per question.
-3. ~~**Citations as excerpts**~~ — done, Decision 0013, chain 5.
-4. **Prompt iteration on the answer layer's reds**: ~~the quote discipline
-   `low` effort loosened~~ — done in chain 7 (no `...`, no PT/ES splices,
-   exact spacing; dropped quotes 14 → 8) together with the answer-language
-   rule. Still open: the false refusals on formula/figure cases, the
-   cross-document warranty answer on a negative (chain 4), `neg-008`'s
-   seal-grease trap (chain 7) and the table-row quotes containment still
-   drops — one prompt change per run.
-5. **`LLM_THINKING=minimal` on the eval** (chain 6 probe: ≈ 3 s mean, one
-   wrong table value in three questions) — keep only if the quoting gates
-   hold.
-6. **Hybrid sparse + dense retrieval** for exact identifiers (`W1/W2`,
-   `MN417`-style tokens) with RRF fusion[^retrieval-evidence] — one case
-   on this dataset, partially.
-7. **Mirrored-page handling** for trilingual manuals (page language at
-   ingestion, filter or dedupe at retrieval) — the `cestari-009` slot.
-8. ~~A multilingual embedder~~ — done in chain 3. ~~The latency
-   question~~ — answered in chain 6 (reasoning tokens; `LLM_THINKING=low`). ~~A chunking strategy
-   that differs in its core~~ — done in chain 2. ~~The answer-layer
-   eval~~ — built, chain 4. Any boundary-only chunking variant should
-   still be expected to land within ±0.02.
-
 [^eval-module]: Eval Harness Module — how runs are produced, thresholds, exclusion rules.
 
 [^decision-0011]: 0011 — Ingestion, second pass: the decisions these runs evidence and the rejected alternatives.
@@ -832,5 +796,3 @@ would produce); rank of the gold page in the top 50:
 [^corpus-findings]: Case Files Corpus Findings — the corrected CESTARI finding and measured pymupdf4llm behavior.
 
 [^retrieval-evidence]: Retrieval Strategy Evidence — hybrid search, small-to-big and chunk-size evidence.
-
-[^answer-spec]: Answer Eval — Design & Implementation Plan — the answer layer's gates, populations, normalization and error semantics behind chain 4.

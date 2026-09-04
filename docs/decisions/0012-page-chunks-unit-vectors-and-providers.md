@@ -3,7 +3,7 @@ type: Decision
 title: 0012 — Retrieval granularity and providers: page chunks with unit vectors, Gemini embeddings, LLM fallback, low reasoning effort
 description: The chunk is the page and the vector is the unit — each page's paragraphs and table rows are embedded separately and kept as one Qdrant multivector scored by MaxSim (recall@5 0.81 → 0.86, precision@5 0.25 → 0.34) — the embedder is google:gemini-embedding-001 through pydantic-ai's Embedder (recall@5 0.86 → 0.95, six of eleven cross-lingual misses recovered) with the OpenAI models kept as config, the LLM falls back from gpt-5-mini to gemini-3.5-flash through pydantic-ai's FallbackModel, and (amended 2026-09-02) the LLM reasons at low effort through pydantic-ai's unified thinking setting, LLM_THINKING=low, because reasoning tokens were 85–94 % of the output and of the latency (answer mean 16.0 → 5.9 s, cost per run $0.29 → $0.18, gates inside noise, dropped quotes doubled); structured packing, section-level parents, text-embedding-3-large, the other Gemini flash models, the provider default and minimal effort were measured or reasoned out.
 tags: [retrieval, chunking, multivector, embeddings, gemini, fallback, pydantic-ai, qdrant, evals, thinking, latency, cost]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-02T23:55:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T18:41:00Z }
 sources:
@@ -29,10 +29,10 @@ sources:
     resource: /src/llm/llm.md
     title: LLM Module
   - id: retrieval-evidence
-    resource: /research/retrieval-strategy-evidence.md
+    resource: /docs/research/retrieval-strategy-evidence.md
     title: Retrieval Strategy Evidence
   - id: challenge
-    resource: /docs/challenge.md
+    resource: /docs/challenge.pdf
     title: Challenge Brief
 ---
 
@@ -56,8 +56,8 @@ path.[^decision-0008]
 Owner decisions taken on 2026-09-02, in conversation: try a chunking
 strategy that differs in its core instead of another boundary variant;
 try a multilingual Google embedder rather than `text-embedding-3-large`;
-make Gemini the default once measured, because the examiners provide any
-API keys needed; implement the LLM fallback with pydantic-ai's own logic to
+make Gemini the default once measured, since both provider keys are
+configured at setup anyway; implement the LLM fallback with pydantic-ai's own logic to
 a Gemini model comparable to `gpt-5-mini`.
 
 # Decision
@@ -102,7 +102,7 @@ Portuguese-over-English misses plus two others (`cestari-017`,
 `weg-guia-013`), LB5001 reached 1.00, and the Portuguese slice rose from
 0.83 to 0.94 recall — one config value moved recall more than every
 chunking experiment combined.[^findings] The price is a second API key,
-which the examiners provide, about 8× the embedding cost per token (cents
+about 8× the embedding cost per token (cents
 for the corpus), roughly +150 ms per query embedding, and doubled vector
 storage.
 
@@ -151,8 +151,10 @@ recall **0.90 → 0.86**, because the model quotes fewer pages and copies
 less carefully (dropped quotes 7 → 14: passages abridged with `...`, PT/ES
 splices on mirrored CESTARI pages); refusals 7/8 unchanged; tool calls
 16 → 7; run cost $0.29 (estimated from tokens) → **$0.18** recorded. The
-quoting regression is prompt work, queued in the findings, not a reason
-to spend three times the tokens on every question.
+quoting regression was prompt work, not a reason to spend three times the
+tokens on every question — and prompt work paid it back on 2026-09-04
+(findings chain 7): rules read off the dropped passages took them 14 → 8
+and citation recall back to 0.90, with no new code.[^findings]
 
 Rejected: the **provider default** (the latency above, and it was never a
 choice — no setting had been sent); **`minimal`** (≈ 3 s in the probe, but
@@ -200,9 +202,10 @@ retrieval change, and has no eval row; it was verified by hand.
   kept calling the tool instead of answering in the probe;
   `gemini-3.7-flash` and `gemini-3.5-flash-lite` returned 503 at the
   time.[^llm-module]
-- **Hybrid sparse + dense now**: still the right tool for the exact
-  identifiers left red (`W1/W2`, `MN417`), queued behind the `Retriever`
-  port per Decision 0005; not part of this decision.[^decision-0005]
+- **Hybrid sparse + dense now**: the right tool for the exact identifiers
+  left red (`W1/W2`, `MN417`), and the `Retriever` port of Decision 0005
+  is where it would go — one case on this dataset, so not part of this
+  decision.[^decision-0005]
 
 # Consequences
 
@@ -212,12 +215,13 @@ retrieval change, and has no eval row; it was verified by hand.
   the store refuses an incompatible one with the fix in the message.
 - Five pages are ≈ 4–5 k tokens of context per question, three to four
   times before, and `POST /question` now returns whole pages as
-  `references` while the challenge shows short excerpts — the open problem
-  in [Next Steps](/docs/next-steps.md), section 4. Retrieval improved; the
-  wire contract must catch up.
+  `references` while the challenge shows short excerpts. Retrieval improved
+  and the wire contract did not — closed by
+  [Decision 0013](/docs/decisions/0013-citations-as-quotes.md), which makes
+  each reference a passage quoted verbatim from the page.
 - The multilingual embedder ranks CESTARI's PT/ES/EN mirrors together, so
-  one multi-excerpt case (`cestari-009`) lost a slot; mirrored-page
-  handling is queued.[^findings]
+  one multi-excerpt case (`cestari-009`) lost a slot — the measured price
+  of the +0.09 recall.[^findings]
 - What stands: the two read-side ports, the seed-plus-tool answering and
   Qdrant from Decision 0005; deterministic ids and the `kind`/`metadata`
   extension points from 0007; font repair and page cleaning from 0011. The

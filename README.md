@@ -2,7 +2,7 @@
 
 Upload PDFs, ask questions in any language, get grounded answers together
 with the exact excerpts they came from. Built for an ML Engineering
-interview challenge ([brief](docs/challenge.md)), and built **eval-first**:
+interview challenge ([brief](docs/challenge.pdf)), and built **eval-first**:
 every retrieval and prompt change is measured against a hand-authored
 golden dataset before it is kept. From day one the repo has carried a
 **wiki-style knowledge base for the AI coding agents** that helped develop
@@ -206,7 +206,7 @@ src/api/          FastAPI routes + composition root
 src/evaluation/   the eval harness (loader, matching, metrics, report, CLI)
 evals/            golden dataset (93 cases) and committed results
 tests/            domain services against fakes, adapters, routes and seam integration
-docs/ specs/ research/   the knowledge bundle (see below)
+docs/            the knowledge bundle (see below)
 ```
 
 ## Eval-first
@@ -276,7 +276,7 @@ The tool is neutral on the gates on this dataset (run-to-run noise is
 ≈ ±0.03): it costs about a second and 55 % more input tokens, searches
 before refusing on most unanswerable questions, and never fires on the
 three cross-lingual retrieval misses, which become confidently wrong
-answers — the next retrieval work item. Making the model quote the
+answers. Making the model quote the
 passages it cites instead of naming chunks raised citation precision
 (fewer, better pages cited) at the cost of the quotes' output tokens;
 7 of 200 quotes were dropped as not found in any page. The last row is
@@ -362,29 +362,16 @@ concept before it is written, and stamps what he has reviewed
 
 Some of the documentation worth a look:
 
-- [`docs/golden-rules.md`](docs/golden-rules.md) — the challenge's six
-  criteria, adopted as the north star every tradeoff is resolved against.
+- [`docs/golden-rules.md`](docs/golden-rules.md) — the six priorities
+  every tradeoff in this repo is resolved against.
 - [`docs/architecture.md`](docs/architecture.md) — the operating map of
   the codebase: shape, rules, how to extend it.
 - [`docs/decisions/`](docs/decisions/index.md) — the decision records,
   each with context, alternatives rejected and consequences.
-- [`specs/`](specs/index.md) and [`research/`](research/index.md) — the
-  designs each subsystem was built from, and the cited evidence behind
-  them.
+- [`docs/research/`](docs/research/index.md) — the cited external evidence
+  and corpus findings the decisions were grounded in.
 - Module notes next to the code, such as
   [`src/ingestion/ingestion.md`](src/ingestion/ingestion.md) and
   [`src/evaluation/evaluation.md`](src/evaluation/evaluation.md).
 - [`log.md`](log.md) — the bundle's changelog, newest first: the story of
   the project in one page.
-
-## Challenge deliverables
-
-- [x] Complete implementation — `POST /documents`, `POST /question`, the
-  contract exactly as specified
-- [x] Setup and run instructions — [Quickstart](#quickstart), Docker only
-- [x] Example requests and expected responses — [above](#example-requests-and-responses), real outputs
-- [x] Environment variables and API keys — [Configuration](#configuration)
-- [x] Optional: Dockerized environment and Makefile
-- [x] Optional: logging — per-file ingestion progress and request logs in the compose output
-- [x] Optional: multiple LLM providers and fallback — `gpt-5-mini` falls back to `gemini-3.5-flash` automatically (PydanticAI `FallbackModel`); embeddings are Gemini
-- [ ] Optional: frontend — not built; the OpenAPI UI at `/docs` is the interactive surface

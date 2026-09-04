@@ -3,13 +3,10 @@ type: Module
 title: LLM Module
 description: The LLM port's adapter stage — PydanticAiLLM over pydantic_ai.direct, one provider call per complete() that offers function-derived strict tools, demands the AgentReply schema as native structured output and carries the model settings the composition root chose — and what its code cannot say: the sync-only constraint that keeps the question route a plain def, schema derivation and validation with TypeAdapter, message grouping and tool_name-by-id resolution, which exceptions reach the API edge as 502 versus 500, that openai: resolves to the Responses API, the FallbackModel wiring and why gemini-3.5-flash is the fallback, why the thinking level is low by default (reasoning tokens were 85–94 % of the output and the whole latency), how usage carries reasoning tokens and a priced cost, why a malformed reply is requested once more before it becomes a 502 and where every exception class lands at the API edge, and how to test against FunctionModel.
 tags: [llm, adapter, pydantic-ai, structured-output, tool-calling, provider-errors, thinking, latency, cost]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-09-03T00:40:00Z }
 verified: { by: human:vinicius, at: 2026-09-02T02:46:00Z }
 sources:
-  - id: spec
-    resource: /specs/question-agent-design.md
-    title: Question Agent — Design & Implementation Plan
   - id: decision-0008
     resource: /docs/decisions/0008-question-agent-baseline.md
     title: 0008 — Question agent baseline
@@ -17,7 +14,7 @@ sources:
     resource: /docs/decisions/0009-structured-reply-function-tools.md
     title: 0009 — Structured agent reply, function-derived tools, chunk ids as citation handles
   - id: llm-evidence
-    resource: /research/llm-adapter-library-evidence.md
+    resource: /docs/research/llm-adapter-library-evidence.md
     title: LLM Adapter Library Evidence
   - id: arch
     resource: /docs/architecture.md

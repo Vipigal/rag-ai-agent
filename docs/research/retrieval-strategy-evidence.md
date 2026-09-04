@@ -3,7 +3,7 @@ type: Reference
 title: Retrieval Strategy Evidence
 description: External evidence gathered 2026-08-31 on hybrid search (BM25 + vectors), small-to-big / parent-document retrieval, chunk sizing, and PDF-parser benchmarks, to ground future chunking/retrieval decisions.
 tags: [retrieval, hybrid-search, chunking, benchmarks, pdf-extraction]
-status: draft
+status: stable
 generated: { by: claude_code/claude-fable-5, at: 2026-08-31T19:05:00Z }
 verified: { by: human:vinicius, at: 2026-08-31T19:48:00Z }
 sources:

@@ -17,10 +17,10 @@ sources:
     resource: /docs/decisions/0007-naive-ingestion-baseline.md
     title: 0007 — Naive ingestion baseline
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
   - id: retrieval-evidence
-    resource: /research/retrieval-strategy-evidence.md
+    resource: /docs/research/retrieval-strategy-evidence.md
     title: Retrieval Strategy Evidence
   - id: retrieval-module
     resource: /src/retrieval/retrieval.md

@@ -1,19 +1,16 @@
 ---
 type: Module
 title: Golden Dataset
-description: Co-located overview of the 93-case golden dataset — what each YAML file covers, page-numbering and transcription semantics per source PDF, each file's canary role, and the semantics of negative cases.
+description: Co-located overview of the 93-case golden dataset — what each YAML file covers, page-numbering and transcription semantics per source PDF, each file's canary role, the semantics of negative cases, and the rules a case is written by.
 tags: [evals, golden-dataset, corpus, ground-truth]
 status: stable
-generated: { by: claude_code/claude-fable-5, at: 2026-08-31T23:55:00Z }
+generated: { by: claude_code/claude-fable-5, at: 2026-09-04T12:00:00Z }
 sources:
-  - id: spec
-    resource: /specs/eval-structure-design.md
-    title: Eval Structure & Golden Dataset — Design
   - id: decision-0006
     resource: /docs/decisions/0006-eval-metrics-and-golden-dataset.md
     title: 0006 — Eval metrics and golden-dataset shape
   - id: corpus-findings
-    resource: /research/case-files-corpus-findings.md
+    resource: /docs/research/case-files-corpus-findings.md
     title: Case Files Corpus Findings
 ---
 
@@ -21,12 +18,13 @@ sources:
 
 The hand-authored golden dataset over `case_files/`: 93 question →
 ideal-answer cases split across five YAML files, one per source PDF plus
-one of negatives. The case schema, matching semantics, quotas, and
-question-style rules are defined in the spec;[^spec] the metric decisions
-they feed are in Decision 0006.[^decision-0006] Each case's `notes` field
-states the specific trap that case tests. This concept carries the
-per-file knowledge the YAML files themselves cannot say (this repo keeps
-code and config files comment-free).
+one of negatives. The case schema is the YAML itself, validated by
+`src/evaluation/dataset.py`; the metric decisions the dataset feeds are in
+Decision 0006.[^decision-0006] Each case's `notes` field states the
+specific trap that case tests. This concept carries what the YAML files
+themselves cannot say (this repo keeps code and config files
+comment-free): the per-file knowledge below, and the rules a case is
+written by.
 
 # The files
 
@@ -79,8 +77,48 @@ hallucinating system would grab (e.g. `neg-007`: a 12-month warranty
 exists in the corpus, but for CESTARI gearboxes, not the pump motor being
 asked about).
 
-[^spec]: Eval Structure & Golden Dataset — Design (schema, matching
-    semantics, quotas, style rules, authoring process).
+# How a case is written
+
+Cases are hand-authored. The author reads each PDF **page by page as
+rendered**, not through the text layer — mandatory for CESTARI, whose
+extraction yields `�`. LLM test-set generation was rejected on two
+grounds: generated questions parrot the source's phrasing, which inflates
+retrieval scores, and CESTARI's broken text layer would poison the
+generator's input. The first batch (LB5001) was reviewed for tone and
+difficulty before the remaining cases were written.
+
+Five style rules govern every question:
+
+1. **A question never references the manual or its structure** — not
+   "according to the relubrication table", not "in section 5.1". Someone
+   holding the manual would read it, not ask the system. Source anchoring
+   belongs in `gold_excerpts`, never in the question.
+2. **Operator questions never reuse the manual's vocabulary** — "parafusar
+   na base", not "securely mounted by its mounting holes". Lexical overlap
+   with the source inflates retrieval scores.
+3. **Table excerpts carry the table title, the header row and the data
+   row**, so overlap matching survives a chunker that renders the table as
+   markdown.
+4. **`expected_facts` stay minimal and numeric**, and the case's `notes`
+   flag the normalization traps (decimal comma, digit grouping).
+5. **`notes` states the trap the case tests**, for whoever debugs it as a
+   red result later.
+
+Language is assigned deliberately, not incidentally: the operator persona
+asks in pt-BR throughout; the technical persona mixes pt and en.
+Cross-lingual coverage is on purpose — pt questions over the EN-only
+manuals (LB5001, MN414) and en questions over the PT-only guide — and
+metrics are sliced by `language` and by document so a cross-lingual
+embedding failure shows up as its own axis rather than as noise.
+
+The `image_content` slice is deliberately small — 2 cases, against an
+early target of ~5. Reading the whole corpus showed its figures are
+consistently caption-anchored: nearly every visual fact is also stated in
+text nearby. The only honest image-only questions in the corpus were a
+graph value (the tE curve) and a photo detail (receptacle contacts).
+Inventing more would have meant reference answers nobody could verify,
+which is how a golden dataset stops being ground truth. The slice grows
+when multimodal ingestion does.
 
 [^decision-0006]: 0006 — Eval metrics and golden-dataset shape.
 
