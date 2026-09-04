@@ -1,4 +1,4 @@
-# RAG Agent — question answering over PDF manuals
+# RAG Agent: question answering over PDF manuals
 
 Upload PDFs, ask questions in any language, get grounded answers together
 with the exact excerpts they came from. Built for an ML Engineering
@@ -26,7 +26,7 @@ cp .env.example .env        # put your keys in OPENAI_API_KEY and GEMINI_API_KEY
 make up                     # builds the image, starts Qdrant + API in the foreground
 ```
 
-With the stack running, send any PDF to `POST /documents` — repeat `-F`
+With the stack running, send any PDF to `POST /documents`. Repeat `-F`
 to upload several at once. The repo ships four real motor manuals in
 `case_files/` (WEG and Baldor, Portuguese and English) if you want
 something to try:
@@ -67,7 +67,7 @@ content-addressed, so the index never accumulates duplicates.
 Real outputs from the running stack (`openai:gpt-5-mini`, the four manuals
 from `case_files/` indexed, captured 2026-09-04). Each reference is a
 passage the model quoted verbatim from a page it read, verified by
-containment before it is returned — never a whole page, never invented.
+containment before it is returned. It is never a whole page, never invented.
 
 **The Quickstart question**, answered from the Baldor manual:
 
@@ -85,8 +85,8 @@ containment before it is returned — never a whole page, never invented.
 }
 ```
 
-**The same question in Portuguese** — the answer follows the language of
-the question, the references keep the words of the source (an English
+**The same question in Portuguese.** The answer follows the language of
+the question, and the references keep the words of the source (an English
 manual). Reading and answering are separate concerns:
 
 ```json
@@ -104,7 +104,7 @@ manual). Reading and answering are separate concerns:
 ```
 
 When the indexed documents do not support an answer the agent refuses in
-the question's language and returns an empty `references` list — it never
+the question's language and returns an empty `references` list. It never
 invents a source:
 
 ```json
@@ -127,13 +127,13 @@ default (`LLM_THINKING`).
 
 ```mermaid
 flowchart LR
-  subgraph ingest["POST /documents — write path"]
+  subgraph ingest["POST /documents (write path)"]
     P[PDF bytes] --> X["PdfExtractor<br/>pymupdf4llm, page markdown<br/>+ TOC breadcrumbs"]
     X --> C["chunker<br/>one chunk per page,<br/>embedded as its blocks"]
     C --> E["EmbeddingModel<br/>pydantic-ai Embedder:<br/>OpenAI or Google"]
     E --> Q[("Qdrant<br/>one point per chunk<br/>payload = provenance")]
   end
-  subgraph ask["POST /question — read path"]
+  subgraph ask["POST /question (read path)"]
     U[question] --> R["Retriever<br/>seed top-k"]
     R --> A["AgentService<br/>bounded tool loop"]
     A --> L["LLM port<br/>PydanticAI direct<br/>structured reply"]
@@ -150,20 +150,75 @@ composition root at the API edge. The point is cheap experiments: swapping
 the PDF extractor, the embedder, the retrieval strategy or the LLM provider
 is a one-line change, and the evals decide whether it stays.
 
-Answering is **dual-path**: a deterministic seed retrieval puts the top-k
-chunks in front of the model as an XML-rendered context, and the model may
-call a `query_knowledge` tool (at most 3 rounds) against the same retriever
-when the seed is not enough. The final turn is a **provider-enforced
-structured reply**: answer text, the passages it quotes verbatim from the
-chunks, and a `has_answer` flag. Each quote is verified by containment
-against the chunks the model saw and resolved to its document and page;
-what cannot be found is dropped, so `references` carries exactly the
-passages that grounded the answer, never whole pages or everything that
-was retrieved. The prompt is a deliberate,
-reviewed artifact in `src/domain/services/prompts.py`.
+### Ingestion: from PDF bytes to searchable chunks
+
+`pymupdf4llm` extracts each page as markdown. Two cleaning passes wrap
+that extraction; both replaced a naive baseline that scored worse:
+
+- **Font repair (before extraction).** Some PDFs embed fonts with no
+  Unicode map, so those pages decode as runs of `�` instead of real text.
+  We rebuild the missing map from Arial's standard glyph order before
+  extraction runs. On one manual this took the garbled character count
+  from 71,618 down to 41, with no OCR involved.
+- **Page cleaning (after extraction).** Running headers, page numbers and
+  dot leaders are stripped before anything reaches the embedder, so they
+  don't compete with real content for similarity.
+
+Chunking stayed deliberately simple: **one chunk per page**, no
+fixed-size splitting, no overlap. Underneath that, each page is also
+split into small units (paragraphs and table rows), and each unit gets
+its own embedding. Qdrant stores all of a page's unit vectors on **one
+multivector point**, scored by its best-matching unit (MaxSim). That
+means a page is *found* by its most specific sentence, but *returned*
+whole, so the model gets full context without losing precision. It's
+small-to-big retrieval, without needing a separate parent index.
+
+Every one of these choices replaced something that measured worse. The
+[scoreboard](#scoreboard) below shows what each one bought.
+
+### Retrieval: from a question to a grounded answer
+
+A question first gets a deterministic top-k search (`RETRIEVAL_K=5`,
+MaxSim over the stored multivectors). The retrieved chunks are rendered
+as XML in the model's system prompt, one `<chunk>` per page. Here is a
+trimmed example: this is what the model saw before answering the
+Quickstart's grease question above.
+
+```xml
+<chunk document="LB5001.pdf" page="2">
+  <text>
+  Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If
+  other greases are preferred, check with a local Baldor Service Center
+  for recommendations.
+
+  Caution: Keep grease clean. Mixing dissimilar grease is not recommended.
+  </text>
+</chunk>
+```
+
+(A `<section>` element is added above `<text>` for pages that have one:
+either from the PDF's own outline, or from a markdown heading.)
+
+If the seed chunks aren't enough, the model can call a `query_knowledge`
+tool, up to 3 rounds, to search again with a reformulated query
+(synonyms, the other language, a more technical term) before giving up.
+
+The final turn is a **provider-enforced structured reply** with three
+fields: `answer`, `has_answer`, and `citations`. Citations are passages
+the model must copy **verbatim** from the `<text>` it read, character for
+character, never paraphrased or translated. This is exactly how the two
+references in the grease example above were produced. We do not trust
+the model's word for where a quote came from: every citation is resolved
+afterwards by checking, line by line, that it is actually contained in a
+chunk the model saw. A citation that fails that check is dropped rather
+than guessed at, so `references` never carries invented or approximate
+text, or a whole page when a sentence would do. The prompt is a
+deliberate, reviewed artifact in `src/domain/services/prompts.py`. The
+design behind this citation scheme, including what it costs, is in the
+[answer layer](#answer-layer) below.
 
 ```
-src/domain/       entities, ports (Protocols), AgentService, IngestionPipelineService, prompts — pure Python
+src/domain/       entities, ports (Protocols), AgentService, IngestionPipelineService, prompts (pure Python)
 src/ingestion/    pymupdf4llm extractor, chunker
 src/retrieval/    embedder (OpenAI or Gemini), Qdrant multivector store, VectorRetriever
 src/llm/          PydanticAiLLM adapter (structured output, function-derived tools)
@@ -178,17 +233,17 @@ docs/            the knowledge bundle (see below)
 
 Accuracy is measured, not assumed.
 
-- **Golden dataset** — 93 hand-authored question → ideal-answer cases over
+- **Golden dataset**: 93 hand-authored question → ideal-answer cases over
   the four manuals ([overview](evals/golden/golden-dataset.md)): operator
   and technical personas, table and figure lookups, cross-lingual cases
   (English manuals asked in Portuguese and vice-versa), and 8 unanswerable
   controls. Ground truth is verbatim excerpts plus page, never chunk ids,
   so it survives any change in chunking.
-- **Metrics** — deterministic **gates** decide experiments: recall@5,
+- **Metrics.** Deterministic **gates** decide experiments: recall@5,
   hit_rate@5, MRR@5. Diagnostics (precision@5, per-slice breakdowns by
   document, language, persona and category) explain the numbers but never
   gate.
-- **The rule** — any change to chunking, embedding, retrieval or prompting
+- **The rule**: any change to chunking, embedding, retrieval or prompting
   ships with a before/after run committed to `evals/results/`.
 
 ```bash
@@ -206,13 +261,13 @@ reach here.
 
 | Iteration                                                                                                                                                                                                    | Date       | Results                                                                                          | recall@5 | hit_rate@5 |    MRR@5 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------ | -------: | ---------: | -------: |
-| **Baseline** — pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search                                                                                                  | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json)                   |     0.65 |       0.66 |     0.60 |
-| **Font repair** — fonts lacking a ToUnicode map get one from Arial's glyph order before extraction; CESTARI stops indexing `�` (no OCR)                                                                      | 2026-09-02 | [`20260902-035239-font-repair.json`](evals/results/20260902-035239-font-repair.json)             |     0.78 |       0.80 |     0.70 |
-| **Page cleaning** — running headers, page numbers, dot leaders and picture-text markers stripped                                                                                                             | 2026-09-02 | [`20260902-035640-page-cleanup.json`](evals/results/20260902-035640-page-cleanup.json)           |     0.80 |       0.81 |     0.71 |
-| **Structured chunks** — markdown blocks packed to ~1200 chars, sentences and tables never split, sections from headings where the PDF has no outline                                                         | 2026-09-02 | [`20260902-041707-structured-chunks.json`](evals/results/20260902-041707-structured-chunks.json) |     0.79 |       0.81 |     0.71 |
-| **Contextualized embeddings** — document, section and heading prefixed to the text the embedder sees; stored chunk unchanged                                                                                 | 2026-09-02 | [`20260902-041913-embed-context.json`](evals/results/20260902-041913-embed-context.json)         |     0.81 |       0.83 |     0.76 |
-| **Page chunks, small units** — one chunk per page; its paragraphs and table rows are embedded as separate vectors on the same Qdrant point (MaxSim), so a specific value is found and the whole page is read | 2026-09-02 | [`20260902-045635-page-multivector.json`](evals/results/20260902-045635-page-multivector.json)   |     0.86 |       0.86 |     0.79 |
-| **Multilingual embedder** — `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered        | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json)   | **0.95** |   **0.95** | **0.91** |
+| **Baseline**: pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search                                                                                                  | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json)                   |     0.65 |       0.66 |     0.60 |
+| **Font repair**: fonts lacking a ToUnicode map get one from Arial's glyph order before extraction; CESTARI stops indexing `�` (no OCR)                                                                      | 2026-09-02 | [`20260902-035239-font-repair.json`](evals/results/20260902-035239-font-repair.json)             |     0.78 |       0.80 |     0.70 |
+| **Page cleaning**: running headers, page numbers, dot leaders and picture-text markers stripped                                                                                                             | 2026-09-02 | [`20260902-035640-page-cleanup.json`](evals/results/20260902-035640-page-cleanup.json)           |     0.80 |       0.81 |     0.71 |
+| **Structured chunks**: markdown blocks packed to ~1200 chars, sentences and tables never split, sections from headings where the PDF has no outline                                                         | 2026-09-02 | [`20260902-041707-structured-chunks.json`](evals/results/20260902-041707-structured-chunks.json) |     0.79 |       0.81 |     0.71 |
+| **Contextualized embeddings**: document, section and heading prefixed to the text the embedder sees; stored chunk unchanged                                                                                 | 2026-09-02 | [`20260902-041913-embed-context.json`](evals/results/20260902-041913-embed-context.json)         |     0.81 |       0.83 |     0.76 |
+| **Page chunks, small units**: one chunk per page; its paragraphs and table rows are embedded as separate vectors on the same Qdrant point (MaxSim), so a specific value is found and the whole page is read | 2026-09-02 | [`20260902-045635-page-multivector.json`](evals/results/20260902-045635-page-multivector.json)   |     0.86 |       0.86 |     0.79 |
+| **Multilingual embedder**: `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered        | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json)   | **0.95** |   **0.95** | **0.91** |
 
 Gates are computed over the 83 gated cases (93 minus 8 unanswerable
 controls and 2 image-only diagnostics).
@@ -223,19 +278,27 @@ Same dataset, the whole `/question` path (seed retrieval → `gpt-5-mini`
 → structured reply), scored deterministically: fact recall over the
 cases' `expected_facts`, citation precision and recall over the cited
 `(document, page)` pairs, refusal rate over the 8 unanswerable controls.
-No LLM judge — red cases are read by hand from the per-case JSON.
+No LLM judge. Red cases are read by hand from the per-case JSON.
 
-| Run                                                                                                            | Citations       | `query_knowledge` tool | reasoning effort | fact recall | citation precision | citation recall | refusals | latency (mean) | cost (LLM) |
-| -------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------- | ---------------- | ----------: | -----------------: | --------------: | -------: | -------------: | ---------: |
-| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json)                       | chunk ids       | on                     | provider default |    **0.93** |               0.70 |        **0.92** |      6/8 |         11.7 s |    ≈ $0.22 |
-| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json)                     | chunk ids       | off                    | provider default |        0.92 |               0.73 |            0.91 |      7/8 |         10.5 s |    ≈ $0.18 |
-| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json)           | verbatim quotes | on                     | provider default |        0.92 |               0.78 |            0.90 |      7/8 |         16.0 s |    ≈ $0.29 |
-| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json)                         | verbatim quotes | on                     | `low`            |        0.91 |               0.79 |            0.86 |      7/8 |      **5.9 s** |      $0.18 |
-| [`20260904-033639-prompt-language-reminder.json`](evals/results/20260904-033639-prompt-language-reminder.json) | verbatim quotes | on                     | `low`            |        0.91 |           **0.81** |            0.90 |      6/8 |          6.4 s |  **$0.14** |
+| Iteration                                                                                                                                                      | Results                                                                                                         | fact recall | citation precision | citation recall | refusals | latency (mean) |       cost |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------: | ------------------: | ---------------: | -------: | --------------: | ----------: |
+| **Chunk ids**: the model cites a chunk id per claim; provider-default reasoning effort                                                                          | [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json)                          |    **0.93** |                 0.70 |         **0.92** |      6/8 |          11.7 s |    ≈ $0.22 |
+| **`query_knowledge` tool off**: same as above, the retrieval tool disabled; kept **on** going forward, it recovers cases the seed alone misses                  | [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json)                        |        0.92 |                 0.73 |             0.91 |      7/8 |          10.5 s |    ≈ $0.18 |
+| **Verbatim quotes**: citations become passages copied from `<text>`, resolved by containment ([Decision 0013](docs/decisions/0013-citations-as-quotes.md))     | [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json)              |        0.92 |                 0.78 |             0.90 |      7/8 |          16.0 s |    ≈ $0.29 |
+| **Low reasoning effort**: `LLM_THINKING=low` instead of the provider default                                                                                    | [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json)                            |        0.91 |                 0.79 |             0.86 |      7/8 |       **5.9 s** |       $0.18 |
+| **Language reminder in the prompt**: explicit rule to answer in the question's language regardless of the chunks' language                                     | [`20260904-033639-prompt-language-reminder.json`](evals/results/20260904-033639-prompt-language-reminder.json)    |        0.91 |             **0.81** |             0.90 |      6/8 |           6.4 s |   **$0.14** |
 
 Costs marked ≈ are computed after the fact from each run's recorded
 tokens with the same price table; the last row's is recorded by the run
 itself (embedding calls excluded, three orders of magnitude smaller).
+
+Fact recall and citation recall dip a little, 0.01 to 0.02, from the
+first row to the last. That's inside the ±0.03 run-to-run noise this
+93-case dataset carries (see [Decision 0013](docs/decisions/0013-citations-as-quotes.md)).
+Citation precision, latency and cost move well past that noise: verbatim,
+containment-checked citations raised precision from 0.70 to 0.81, and
+dropping the reasoning effort to `low` cut mean latency by more than
+half, at no real cost to the other metrics.
 
 ## Engineering practices
 
@@ -247,8 +310,8 @@ itself (embedding calls excluded, three orders of magnitude smaller).
   dependency overrides, seams on an in-memory Qdrant. External services
   are faked here; their real behavior is the evals' job. `make test` runs
   the suite in seconds.
-- **Typed.** `make typecheck` — pyright in `standard` mode, zero errors,
-  no blanket ignores.
+- **Typed.** `make typecheck` runs pyright in `standard` mode: zero
+  errors, no blanket ignores.
 - **Comment-free code, documented decisions.** Rationale lives in the
   knowledge bundle next to the code it explains, not in comments that
   drift.
@@ -286,9 +349,9 @@ very first commit to sustain it with a **wiki-style knowledge base written
 for those agents**. The whole repo is one knowledge bundle in the
 [Open Knowledge Format](docs/okf-spec.md): every `.md` file carries typed
 frontmatter, module knowledge sits next to the module's code, and every
-change to the bundle is logged. It holds what the code cannot say — why
-things are shaped this way, what was rejected, what was measured — so that
-each new agent session (and each human reader) starts with the same
+change to the bundle is logged. It holds what the code cannot say: why
+things are shaped this way, what was rejected, what was measured. That
+way each new agent session (and each human reader) starts with the same
 context instead of reverse-engineering it from git history.
 
 The bundle is curated: the owner is its editor, approves every new
@@ -297,12 +360,12 @@ concept before it is written, and stamps what he has reviewed
 
 Some of the documentation worth a look:
 
-- [`docs/architecture.md`](docs/architecture.md) — the operating map of
-  the codebase: shape, rules, how to extend it.
-- [`docs/decisions/`](docs/decisions/index.md) — the decision records,
+- [`docs/architecture.md`](docs/architecture.md): the operating map of
+  the codebase (shape, rules, how to extend it).
+- [`docs/decisions/`](docs/decisions/index.md): the decision records,
   each with context, alternatives rejected and consequences.
 - Module notes next to the code, such as
   [`src/ingestion/ingestion.md`](src/ingestion/ingestion.md) and
   [`src/evaluation/evaluation.md`](src/evaluation/evaluation.md).
-- [`log.md`](log.md) — the bundle's changelog, newest first: the story of
+- [`log.md`](log.md): the bundle's changelog, newest first. The story of
   the project in one page.
