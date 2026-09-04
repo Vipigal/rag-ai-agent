@@ -236,17 +236,25 @@ measured, not built"):
   precision@k 0.39 → 0.46; k = 3 loses one case for 0.54. Zero code.
 - **Hybrid sparse**: one case (`mn414-016`, `W1`/`W2`), partially.
 - **Mirrored pages**: one slot (`cestari-009`).
-- **Prompt iteration**, now measurable: the answer eval shows the
-  retrieval reds becoming confident wrong answers cited from the wrong
-  manual (no tool call), two false refusals on formula/figure cases, one
-  cross-document hallucination on a negative — and, since the `low`
-  effort run, quotes abridged with `...` or spliced across the mirrored
-  PT/ES text of CESTARI pages (14 dropped instead of 7).
+- **Prompt iteration**, now measurable: ~~quotes abridged with `...` or
+  spliced across the mirrored PT/ES text of CESTARI pages (14 dropped
+  instead of 7)~~ — **done 2026-09-04 (findings chain 7)**: three rules read
+  off the dropped passages took them to 8, citation recall 0.863 → 0.900
+  and answers citing nothing 3 → 1, with `fact_recall` held at 0.912; the
+  same chain pinned the **answer's language to the question's** (it had
+  been following the chunks — 4 of 5 live English questions answered in
+  Portuguese), which only held once the rule was restated *after* the
+  chunks. Still open: the retrieval reds becoming confident wrong answers
+  cited from the wrong manual (no tool call), two false refusals on
+  formula/figure cases, one cross-document hallucination on a negative,
+  `neg-008`'s seal-grease trap, and the table rows containment still drops
+  (`weg-guia-018`).
 - ~~**Latency**~~ — diagnosed and fixed 2026-09-02 (findings chain 6):
   reasoning tokens at the provider default were 85–94 % of the output;
   `LLM_THINKING=low` took the mean from 16.0 to 5.9 s and the run from
   ≈ $0.29 to $0.18. Still open: `minimal` on the eval (≈ 3 s, one wrong
-  table value in the probe) and the quote-discipline prompt line above.
+  table value in the probe); ~~the quote-discipline prompt line above~~ —
+  done in chain 7.
 
 [^findings]: Eval Experiment Findings — the runs, flips, mechanisms and negative results behind sections 2 and 7.
 

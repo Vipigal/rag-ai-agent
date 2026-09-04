@@ -34,6 +34,19 @@ sources:
 
 # Context
 
+> **Amended by chain 7 of the [findings](/evals/results/experiment-findings.md)**
+> (2026-09-04): the follow-up this record left open — *`unmatched_citations`
+> decides whether the quoting rule needs tightening, not before it is
+> measured* — came due. Reading the 14 passages `LLM_THINKING=low` had cost
+> gave three rules now in `SYSTEM_PROMPT`: never abridge a passage, never
+> continue one into the translation printed beside it on a mirrored page,
+> and copy spacing character for character. Dropped quotes 14 → 8,
+> citation recall 0.863 → 0.900, answers citing nothing 3 → 1. The design
+> is unchanged — quotes resolved by containment, what is not found is
+> dropped, no fallback — and the second LLM pass to repair an empty
+> `references` list was considered and rejected for the same reason this
+> record rejects the page fallback.
+
 The challenge's example response carries a **short excerpt** as each
 reference ("the motor xxx has requires 2.3kw to operate…"), and the brief
 says `references` "carries the retrieved source excerpts that ground the
@@ -166,9 +179,11 @@ dropped quotes that drove the rules, are read in the findings, chain
 - **What stands from Decision 0009**: the provider-enforced structured
   reply, function-derived tools, the XML context in a system message, the
   `dict[str, RetrievedChunk]` memory keyed by chunk id (internal only).
-- **Follow-ups**: the fact-recall and citation gates decide the next prompt
-  iteration; `unmatched_citations` decides whether the quoting rule needs
-  tightening (e.g. a minimum quote length) — not before it is measured.
+- **Follow-ups**: ~~`unmatched_citations` decides whether the quoting rule
+  needs tightening~~ — measured and acted on in chain 7 (the amendment
+  above). What remains is the **table row**: the residual dropped quotes
+  are rows the model reshapes as it copies, which is where a minimum quote
+  length or a row-aware normalizer would go next.
 - Rules served: **API Design** and **Functionality** (the contract's
   excerpts), **LLM Use** (the prompt asks for the minimal supporting
   passage and the system verifies it), **Code Quality** (no second

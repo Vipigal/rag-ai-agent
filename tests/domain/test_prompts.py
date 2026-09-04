@@ -84,3 +84,24 @@ def test_the_rules_ask_for_verbatim_quotes_and_never_mention_chunk_ids():
     assert "verbatim" in SYSTEM_PROMPT
     assert "citations: the passages" in SYSTEM_PROMPT
     assert "id attribute" not in SYSTEM_PROMPT
+
+
+def test_the_rules_pin_the_answer_language_to_the_question_not_to_the_chunks():
+    assert "language of the user's question" in SYSTEM_PROMPT
+    assert "never changes the language you answer in" in SYSTEM_PROMPT
+
+
+def test_the_rules_forbid_abridged_and_language_spliced_citations():
+    assert "never abridged" in SYSTEM_PROMPT
+    assert "never continue a passage into its translation" in SYSTEM_PROMPT
+
+
+def test_the_context_closes_with_the_answer_language_reminder_after_the_chunks():
+    item = retrieved("c1", "As tensões monofásicas padronizadas são 127 V e 220 V.", None)
+
+    for rendered in (
+        render_context([item], tool_available=True),
+        render_context([item], tool_available=False),
+    ):
+        assert "language of the question" in rendered
+        assert rendered.index("</chunks>") < rendered.index("language of the question")

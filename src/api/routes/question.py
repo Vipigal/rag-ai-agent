@@ -9,7 +9,7 @@ from domain.services.agent_service import AgentService
 
 router = APIRouter()
 
-EXAMPLE_QUESTION = "What is the power consumption of the motor?"
+EXAMPLE_QUESTION = "What grease should I use to relubricate the motor bearings?"
 
 
 class QuestionRequest(BaseModel):
@@ -28,9 +28,9 @@ class QuestionResponse(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "answer": "The document gives an example motor as “100 cv (75 kW)” operating at 100% nominal power, so its power consumption is 75 kW.",
+                    "answer": "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations.",
                     "references": [
-                        "Um motor elétrico, trifásico de 100 cv (75 kW), IV polos, operando com 100% da potência nominal, com fator de potência original de 0,87 e rendimento de 93,5%."
+                        "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations."
                     ],
                 },
                 {

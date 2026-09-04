@@ -42,7 +42,7 @@ ask:
 ```bash
 curl -s -X POST http://localhost:8000/question \
         -H 'Content-Type: application/json' \
-        -d '{"question": "What is the power consumption of the motor?"}'
+        -d '{"question": "What grease should I use to relubricate the motor bearings?"}'
 ```
 
 Interactive OpenAPI docs live at <http://localhost:8000/docs>.
@@ -74,34 +74,30 @@ content-addressed, so the index never accumulates duplicates.
 
 ### Example requests and responses
 
-Real outputs from the running stack (`openai:gpt-5-mini`, the four
-manuals from `case_files/` indexed, captured 2026-09-02). Each reference
-is a passage the model quoted verbatim from a page it read, verified by
-containment before it is returned — never a whole page.
+Real outputs from the running stack (`openai:gpt-5-mini`, the four manuals
+from `case_files/` indexed, captured 2026-09-04). Each reference is a
+passage the model quoted verbatim from a page it read, verified by
+containment before it is returned — never a whole page, never invented.
 
-**The challenge's example question** — over a corpus of four manuals the
-question is underspecified (which motor?), and the agent behaves
-accordingly: in three consecutive runs it answered from the WEG guide's
-worked example twice and once refused, asking which motor was meant. One
-of the grounded runs:
+**The Quickstart question**, answered from the Baldor manual:
 
 ```json
-{"question": "What is the power consumption of the motor?"}
+{"question": "What grease should I use to relubricate the motor bearings?"}
 ```
 
 ```json
 {
-  "answer": "The document gives an example motor as “100 cv (75 kW)” operating at 100% nominal power, so its power consumption is 75 kW.",
+  "answer": "Baldor motors are normally pregreased with Polyrex EM (Exxon Mobil); if other greases are preferred, check with a local Baldor Service Center. Also: “Keep grease clean. Mixing dissimilar grease is not recommended.”",
   "references": [
-    "Um motor elétrico, trifásico de 100 cv (75 kW), IV polos, operando com 100% da potência nominal, com fator de potência original de 0,87 e rendimento de 93,5%."
+    "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations.",
+    "Caution: Keep grease clean. Mixing dissimilar grease is not recommended."
   ]
 }
 ```
 
-**A maintenance question in Portuguese** — the answer separates the two
-manuals that speak about grease, and each reference is the sentence that
-grounds a claim (English from the Baldor manual, Portuguese from the
-WEG-CESTARI guide):
+**The same question in Portuguese** — the answer follows the language of
+the question, the references keep the words of the source (an English
+manual). Reading and answering are separate concerns:
 
 ```json
 {"question": "Qual graxa devo usar para relubrificar os rolamentos do motor?"}
@@ -109,11 +105,10 @@ WEG-CESTARI guide):
 
 ```json
 {
-  "answer": "Depende do equipamento. Para motores Baldor: usar Polyrex EM (Exxon Mobil) — não misturar graxas e manter a graxa limpa; em caso de dúvida consulte o serviço Baldor. Para redutores/gear units WEG: consulte o manual do produto para o lubrificante recomendado; o manual cita NLGI#2EP Texaco Multifak EP2 (ou similar) para proteção externa dos retentores em períodos longos fora de operação.",
+  "answer": "Use, preferencialmente, Polyrex EM (Exxon Mobil). Se optar por outra graxa, consulte um Centro de Serviço Baldor; e evite misturar graxas diferentes.",
   "references": [
     "Baldor motors are pregreased, normally with Polyrex EM (Exxon Mobil). If other greases are preferred, check with a local Baldor Service Center for recommendations.",
-    "Caution: Keep grease clean. Mixing dissimilar grease is not recommended.",
-    "A graxa deve ser removida antes do início da operação (graxa recomendada NLGI#2EP Texaco Multifak EP2 ou similar)."
+    "Caution: Keep grease clean. Mixing dissimilar grease is not recommended."
   ]
 }
 ```
@@ -128,16 +123,39 @@ invents a source:
 
 ```json
 {
-  "answer": "Desculpe, não encontrei a informação sobre a capital da Austrália nos documentos fornecidos.",
+  "answer": "Desculpe, os documentos fornecidos não contêm essa informação.",
   "references": []
 }
 ```
 
-Questions take a few seconds each (2–15 s observed, median ≈ 6 s): one
-or two LLM calls plus retrieval, with the model writing out the passages
-it quotes. The model reasons at low effort by default (`LLM_THINKING`);
-at the provider default it spent most of its output tokens thinking and
-answers took 16 s on average.
+**The challenge brief's own example question** is worth showing for what
+it exposes rather than for what it answers. Over a corpus of four manuals
+it is underspecified — *which* motor? — and the agent says so instead of
+picking one: eight consecutive runs on 2026-09-04 all refused and asked
+which motor was meant. An earlier prompt sometimes answered it from the
+WEG guide's worked example (a 100 cv / 75 kW motor) and sometimes refused.
+Questions of that shape — plausible, nearly answerable, not in the corpus —
+are a measured population here: the
+[golden dataset](evals/golden/golden-dataset.md) carries eight of them as
+unanswerable controls, and `refusal_rate` on the
+[scoreboard](#answer-layer) is the gate that keeps them honest.
+
+```json
+{"question": "What is the power consumption of the motor?"}
+```
+
+```json
+{
+  "answer": "I don't have enough information in the provided documents to determine the motor's power consumption.",
+  "references": []
+}
+```
+
+Questions take a few seconds each (mean 6.4 s, p95 10.4 s over the 93-case
+eval at 8 workers): one or two LLM calls plus retrieval, with the model
+writing out the passages it quotes. The model reasons at low effort by
+default (`LLM_THINKING`); at the provider default it spent most of its
+output tokens thinking and answers took 16 s on average.
 
 ## How it works
 
@@ -182,7 +200,7 @@ in a route.
 ```
 src/domain/       entities, ports (Protocols), AgentService, IngestionPipelineService, prompts — pure Python
 src/ingestion/    pymupdf4llm extractor, chunker
-src/retrieval/    OpenAI embedder, Qdrant store, VectorRetriever
+src/retrieval/    embedder (OpenAI or Gemini), Qdrant multivector store, VectorRetriever
 src/llm/          PydanticAiLLM adapter (structured output, function-derived tools)
 src/api/          FastAPI routes + composition root
 src/evaluation/   the eval harness (loader, matching, metrics, report, CLI)
@@ -247,7 +265,8 @@ No LLM judge — red cases are read by hand from the per-case JSON.
 | [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json) | chunk ids | on | provider default | **0.93** | 0.70 | **0.92** | 6/8 | 11.7 s | ≈ $0.22 |
 | [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json) | chunk ids | off | provider default | 0.92 | 0.73 | 0.91 | 7/8 | 10.5 s | ≈ $0.18 |
 | [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json) | verbatim quotes | on | provider default | 0.92 | 0.78 | 0.90 | 7/8 | 16.0 s | ≈ $0.29 |
-| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json) | verbatim quotes | on | `low` | 0.91 | **0.79** | 0.86 | 7/8 | **5.9 s** | **$0.18** |
+| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json) | verbatim quotes | on | `low` | 0.91 | 0.79 | 0.86 | 7/8 | **5.9 s** | $0.18 |
+| [`20260904-033639-prompt-language-reminder.json`](evals/results/20260904-033639-prompt-language-reminder.json) | verbatim quotes | on | `low` | 0.91 | **0.81** | 0.90 | 6/8 | 6.4 s | **$0.14** |
 
 Costs marked ≈ are computed after the fact from each run's recorded
 tokens with the same price table; the last row's is recorded by the run
@@ -267,9 +286,21 @@ the output tokens were reasoning**, and latency tracks output tokens at
 39 % with fact recall and citation precision inside noise. What it cost:
 citation recall −0.04, because the model copies quotes less carefully
 (14 dropped instead of 7: passages abridged with `...`, mixed-language
-splices) — queued as prompt work. `make eval-answers label=<name>
-workers=8` reproduces a row in about three minutes for ≈ $0.18 of
-`gpt-5-mini`.
+splices).
+
+The last row pays that debt back with **prompt work alone, no new code**.
+Reading the 14 dropped quotes gave the two failure modes their own rules —
+never abridge a passage, and never continue one into the translation
+printed beside it on a mirrored page — and a third rule pins the **answer's
+language to the question's**, restated after the chunks because the model
+was following the language of what it had just read. Dropped quotes fell
+14 → 8, citation recall 0.86 → 0.90 and precision 0.79 → 0.81, fact recall
+held at 0.91, and answers that cite nothing at all went **3 cases → 1**.
+What it cost: one unanswerable control (`neg-008`, a grease the manual
+mentions for seals but not for bearings) was answered instead of refused —
+and the refusal it replaced had itself been written in the wrong language.
+`make eval-answers label=<name> workers=8` reproduces a row in about three
+minutes for ≈ $0.15 of `gpt-5-mini`.
 
 ## Engineering practices
 

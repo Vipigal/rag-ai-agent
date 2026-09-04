@@ -41,7 +41,7 @@ class DocumentsResponse(BaseModel):
         "section). Uploading the same file again is idempotent: chunk ids are content-addressed.\n\n"
         "The upload is all-or-nothing: a file that is not a PDF, or cannot be read as one, "
         "rejects the whole request with `422` naming the file, and nothing is indexed. "
-        "Indexing the four sample manuals takes about a minute; progress is logged per file."
+        "Indexing the four sample manuals takes about two minutes; progress is logged per file."
     ),
     tags=["documents"],
     response_model=DocumentsResponse,

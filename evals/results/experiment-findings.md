@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Eval Experiment Findings
-description: What each committed eval run taught and why — the 2026-09-02 ingestion chain step by step (font repair, page cleaning, structured chunking, contextualized embeddings), the chunking-core chain that followed (fontTools refactor proven equivalent, page chunks with per-unit vectors at +0.05 recall), the embedder chain (gemini-embedding-001 at +0.09 recall, six of eleven cross-lingual cases, 8× the token price in cents) the answer layer's first two runs (chain 4 — fact recall 0.93, citation precision 0.70, the query_knowledge tool neutral on the gates, the reds grouped by cause: retrieval misses become confident wrong answers) the citations-as-quotes change (chain 5 — citation precision up because a quote is a commitment, the normalizer rules learned from dropped quotes, a malformed provider reply, the broken async upload route) and the latency chain (chain 6 — reasoning tokens were 85–94 % of the output at the provider's default effort; thinking low cut the mean answer time 16.0 → 5.9 s and the run's cost $0.29 → $0.18 with the gates inside noise, at the price of twice the dropped quotes), with the cases that flipped and the mechanism behind each move, the negative results, the measured-not-built probes (section-level parents, the cross-lingual residue where translating the question recovers 3 of 4 reds), the discoveries made along the way, and the failure axes that remain, so the next experiment starts from evidence instead of intuition.
+description: What each committed eval run taught and why — the 2026-09-02 ingestion chain step by step (font repair, page cleaning, structured chunking, contextualized embeddings), the chunking-core chain that followed (fontTools refactor proven equivalent, page chunks with per-unit vectors at +0.05 recall), the embedder chain (gemini-embedding-001 at +0.09 recall, six of eleven cross-lingual cases, 8× the token price in cents) the answer layer's first two runs (chain 4 — fact recall 0.93, citation precision 0.70, the query_knowledge tool neutral on the gates, the reds grouped by cause: retrieval misses become confident wrong answers) the citations-as-quotes change (chain 5 — citation precision up because a quote is a commitment, the normalizer rules learned from dropped quotes, a malformed provider reply, the broken async upload route) the latency chain (chain 6 — reasoning tokens were 85–94 % of the output at the provider's default effort; thinking low cut the mean answer time 16.0 → 5.9 s and the run's cost $0.29 → $0.18 with the gates inside noise, at the price of twice the dropped quotes) and the prompt chain (chain 7 — the quote rules read off the 14 dropped passages took them to 8 and answers citing nothing from 3 to 1, and the answer-language rule only held once restated after the chunks, 1-in-5 to 7-in-8 live, at the price of one unanswerable control), with the cases that flipped and the mechanism behind each move, the negative results, the measured-not-built probes (section-level parents, the cross-lingual residue where translating the question recovers 3 of 4 reds), the discoveries made along the way, and the failure axes that remain, so the next experiment starts from evidence instead of intuition.
 tags:
   [
     evals,
@@ -565,6 +565,90 @@ one observation — and would take the mean toward ≈ 3 s. Cross-lingual
 query translation remains the retrieval lever (three MN414 reds are still
 confident wrong answers at either effort).
 
+# Chain 7 — quote discipline and answer language (2026-09-04)
+
+Chain 6 left a debt: `low` effort doubled the dropped quotes (7 → 14) and
+citation recall fell 0.04. A pre-delivery review of the running stack
+added a second symptom the eval cannot see — **the answer's language was
+following the chunks, not the question**: over five live runs of the
+challenge brief's own English example question, four came back in
+Portuguese, because every retrieved chunk was Portuguese. Two prompt
+changes, one run each, no code outside `prompts.py`.
+
+| Run                                        | fact_recall | cit. precision | cit. recall | refusals | unmatched quotes | answers citing nothing | latency mean | cost |
+| ------------------------------------------ | ----------: | -------------: | ----------: | -------: | ---------------: | ---------------------: | -----------: | ---: |
+| `20260903-010828-thinking-low` (chain 6)    |   **0.912** |          0.793 |       0.863 |      7/8 |               14 |                      3 |        5.9 s | $0.18 |
+| `20260904-033017-prompt-language-quotes`    |       0.868 |      **0.818** |   **0.900** |      6/8 |               10 |                  **0** |        6.4 s | $0.18 |
+| `20260904-033639-prompt-language-reminder`  |   **0.912** |          0.807 |   **0.900** |      6/8 |            **8** |                      1 |        6.4 s | **$0.14** |
+
+## Step 1 — the rules came from reading the 14 dropped quotes
+
+Not from intuition. The dropped passages of chain 6 fall into three
+mechanisms, and each got one clause:
+
+- **Cross-language splices (7 of 14)** — CESTARI and MN414 print the same
+  content in Portuguese, English and Spanish down the same page, and the
+  model walked from one column into the next mid-sentence:
+  `"Para períodos de 6 meses até 9 meses sem operação, es recomendado
+  llenar todo interior del reductor…"`. Rule: _where a page prints the
+  same content in several languages, one passage covers one language;
+  never continue a passage into its translation_.
+- **Abridgement (`weg-guia-039`)** — `"As dimensões dos motores elétricos
+  WEG são padronizadas ... a dimensão básica para a padronização…"`. Rule:
+  _never abridged (no "..." and no omitted middle)_.
+- **Transcription noise inside a line (`weg-guia-015`)** — a wrapped table
+  cell copied as `de óleoparapoços`, which fails the line-wise containment
+  check even though every other line matches. Rule: _the exact words,
+  numbers, units and spacing, character for character_.
+
+**Result**: dropped quotes 14 → 10, citation precision 0.793 → 0.818,
+citation recall 0.863 → 0.900, and the three answers that had cited
+nothing at all went to **zero**. `fact_recall` read 0.868 (−0.044), which
+was **noise, not the change**: four cases lost facts against one gained,
+and the largest single loss (`lb5001-001`, a relubrication table answered
+`7,400` instead of `9,500` hours) reproduced correctly 4 times out of 4
+against the live stack with the same prompt. Step 2 confirmed it by
+returning to 0.912 with the quote rules still in place.
+
+## Step 2 — the language rule had to come after the chunks
+
+The first attempt stated the rule in the opening system message, ahead of
+everything: _answer in the language of the user's question … the chunks are
+a multilingual corpus_. It moved live adherence from 1 in 5 to 2 in 4 —
+better, not fixed. The chunks are the **last thing the model reads** before
+the question, and they were all Portuguese.
+
+Restating the rule as a closing line of the context message, after the
+`<chunks>` element and the tool follow-up, took live adherence to **7 of 8**
+English answers on the same English-question-over-Portuguese-chunks probe,
+with Portuguese questions still answered in Portuguese. The mechanism is
+position, not wording: the same sentence earlier in the prompt did not
+hold.
+
+**Gates**: `fact_recall` back to 0.912 (=, chain 6), citation precision
+0.807 (+0.014), citation recall 0.900 (+0.037), dropped quotes 8 (−6),
+answers citing nothing 1 (−2), tool calls 5, cost **$0.14** (−$0.04 —
+input caching rose from 131 k to 343 k tokens because the prompt prefix is
+now longer and stable), latency +0.5 s.
+
+## What it cost
+
+- **One unanswerable control flipped**: `neg-008` ("Which grease should I
+  use when regreasing the bearings of the CESTARI gearbox?") is answered
+  with the seal-protection grease (`NLGI#2EP Texaco Multifak EP2`) instead
+  of refused — refusals 7/8 → 6/8. Worth recording precisely: the refusal
+  it replaced was itself **written in Portuguese for an English question**,
+  so the baseline scored the gate on a reply that was wrong in another
+  dimension the gate does not measure. One case on a population of eight;
+  `refusal_rate` moves in steps of 0.125 and cannot resolve less.
+- **`false_refusal_rate` 0.024 → 0.036**, one gated case.
+- **The last answer citing nothing** is `weg-guia-018`, a table row
+  (`|> 6,3<25|> 8,6<34|12|8,8|`) the model reshapes as it copies. Table
+  rows are the residual failure mode of containment-verified citations, as
+  Decision 0013 anticipated; a second LLM pass to repair an empty
+  `references` list was considered and is **not built** — it would add a
+  call on a 1-in-83 path and rebuild the fallback that decision rejected.
+
 # Reading precision@5 (asked 2026-09-02)
 
 `precision@5` is `relevant slots / 5` per case, averaged; a slot is
@@ -718,10 +802,13 @@ would produce); rank of the gold page in the top 50:
 2. **`RETRIEVAL_K=4`**, recorded with a run — same recall, precision@k
    0.39 → 0.46, one page less per question.
 3. ~~**Citations as excerpts**~~ — done, Decision 0013, chain 5.
-4. **Prompt iteration on the answer layer's reds**: the false refusals on
-   formula/figure cases, the cross-document warranty answer on a negative
-   (chain 4), and now the quote discipline `low` effort loosened (chain 6:
-   no `...` inside a quote, no PT/ES splices) — one prompt change per run.
+4. **Prompt iteration on the answer layer's reds**: ~~the quote discipline
+   `low` effort loosened~~ — done in chain 7 (no `...`, no PT/ES splices,
+   exact spacing; dropped quotes 14 → 8) together with the answer-language
+   rule. Still open: the false refusals on formula/figure cases, the
+   cross-document warranty answer on a negative (chain 4), `neg-008`'s
+   seal-grease trap (chain 7) and the table-row quotes containment still
+   drops — one prompt change per run.
 5. **`LLM_THINKING=minimal` on the eval** (chain 6 probe: ≈ 3 s mean, one
    wrong table value in three questions) — keep only if the quoting gates
    hold.

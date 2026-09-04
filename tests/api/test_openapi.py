@@ -41,7 +41,7 @@ def test_request_and_response_schemas_carry_the_challenge_examples():
     schemas = app.openapi()["components"]["schemas"]
 
     assert schemas["QuestionRequest"]["properties"]["question"]["examples"] == [
-        "What is the power consumption of the motor?"
+        "What grease should I use to relubricate the motor bearings?"
     ]
     assert schemas["QuestionRequest"]["properties"]["question"]["description"]
     question_examples = schemas["QuestionResponse"]["examples"]
