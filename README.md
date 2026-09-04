@@ -6,7 +6,7 @@ interview challenge ([brief](docs/challenge.pdf)), and built **eval-first**:
 every retrieval and prompt change is measured against a hand-authored
 golden dataset before it is kept. From day one the repo has carried a
 **wiki-style knowledge base for the AI coding agents** that helped develop
-it — the [documentation section](#documentation-a-wiki-for-the-agents-that-built-this)
+it. The [documentation section](#documentation-a-wiki-for-the-agents-that-built-this)
 explains how it is organized.
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
@@ -49,27 +49,17 @@ Interactive OpenAPI docs live at <http://localhost:8000/docs>.
 
 ## The API
 
-| Endpoint          | Request                                              | Response                                                     |
-| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
-| `POST /documents` | `multipart/form-data`, one or more PDFs under `files` | `{"message", "documents_indexed", "total_chunks"}`           |
-| `POST /question`  | `{"question": "..."}`                                | `{"answer", "references": [verbatim excerpts the answer cites]}` |
-| `GET /health`     | —                                                    | `{"status", "vector_store", "indexed_chunks", "llm_model", "embedding_model"}`; `503` when Qdrant is down |
-
-Every error body is one sentence, `{"detail": "..."}`, and the status says
-who is at fault:
-
-| Status | When | Example |
-| --- | --- | --- |
-| `422` | The request: blank question, a file that is not a PDF, or a PDF that cannot be read (corrupt, password-protected, no pages). Nothing is indexed: an upload is all-or-nothing. | `'scan.pdf' could not be read as a PDF: Failed to open stream` |
-| `502` | An LLM or embedding provider failed after the fallback, or the LLM's reply was unusable (a malformed reply is requested once more first). The provider or model is named. | `every LLM provider failed: … gpt-5-mini … gemini-3.5-flash …` |
-| `503` | A dependency or the configuration: Qdrant unreachable or its collection built with another embedding model, or a provider key missing. The message names the fix. | `vector store unavailable at http://qdrant:6333: [Errno 111] Connection refused` |
-| `500` | Anything unexpected. Still named: `internal error: <Type>: <message>`, traceback in the server log. | |
+| Endpoint          | Request                                               | Response                                                                                                  |
+| ----------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `POST /documents` | `multipart/form-data`, one or more PDFs under `files` | `{"message", "documents_indexed", "total_chunks"}`                                                        |
+| `POST /question`  | `{"question": "..."}`                                 | `{"answer", "references": [verbatim excerpts the answer cites]}`                                          |
+| `GET /health`     | —                                                     | `{"status", "vector_store", "indexed_chunks", "llm_model", "embedding_model"}`; `503` when Qdrant is down |
 
 Configuration mistakes fail before any request: `make check-env` refuses an
 empty key, and the API validates the models, the keys and the vector store
 at startup, so a wrong `.env` shows up in the `make up` terminal as
 `startup failed: …`. When something fails later, `GET /health` says which
-dependency is down. Re-uploading a file is idempotent — chunk ids are
+dependency is down. Re-uploading a file is idempotent: chunk ids are
 content-addressed, so the index never accumulates duplicates.
 
 ### Example requests and responses
@@ -82,7 +72,7 @@ containment before it is returned — never a whole page, never invented.
 **The Quickstart question**, answered from the Baldor manual:
 
 ```json
-{"question": "What grease should I use to relubricate the motor bearings?"}
+{ "question": "What grease should I use to relubricate the motor bearings?" }
 ```
 
 ```json
@@ -100,7 +90,7 @@ the question, the references keep the words of the source (an English
 manual). Reading and answering are separate concerns:
 
 ```json
-{"question": "Qual graxa devo usar para relubrificar os rolamentos do motor?"}
+{ "question": "Qual graxa devo usar para relubrificar os rolamentos do motor?" }
 ```
 
 ```json
@@ -118,7 +108,7 @@ the question's language and returns an empty `references` list — it never
 invents a source:
 
 ```json
-{"question": "Qual é a capital da Austrália?"}
+{ "question": "Qual é a capital da Austrália?" }
 ```
 
 ```json
@@ -128,34 +118,10 @@ invents a source:
 }
 ```
 
-**The challenge brief's own example question** is worth showing for what
-it exposes rather than for what it answers. Over a corpus of four manuals
-it is underspecified — *which* motor? — and the agent says so instead of
-picking one: eight consecutive runs on 2026-09-04 all refused and asked
-which motor was meant. An earlier prompt sometimes answered it from the
-WEG guide's worked example (a 100 cv / 75 kW motor) and sometimes refused.
-Questions of that shape — plausible, nearly answerable, not in the corpus —
-are a measured population here: the
-[golden dataset](evals/golden/golden-dataset.md) carries eight of them as
-unanswerable controls, and `refusal_rate` on the
-[scoreboard](#answer-layer) is the gate that keeps them honest.
-
-```json
-{"question": "What is the power consumption of the motor?"}
-```
-
-```json
-{
-  "answer": "I don't have enough information in the provided documents to determine the motor's power consumption.",
-  "references": []
-}
-```
-
 Questions take a few seconds each (mean 6.4 s, p95 10.4 s over the 93-case
 eval at 8 workers): one or two LLM calls plus retrieval, with the model
 writing out the passages it quotes. The model reasons at low effort by
-default (`LLM_THINKING`); at the provider default it spent most of its
-output tokens thinking and answers took 16 s on average.
+default (`LLM_THINKING`).
 
 ## How it works
 
@@ -188,14 +154,13 @@ Answering is **dual-path**: a deterministic seed retrieval puts the top-k
 chunks in front of the model as an XML-rendered context, and the model may
 call a `query_knowledge` tool (at most 3 rounds) against the same retriever
 when the seed is not enough. The final turn is a **provider-enforced
-structured reply** — answer text, the passages it quotes verbatim from the
+structured reply**: answer text, the passages it quotes verbatim from the
 chunks, and a `has_answer` flag. Each quote is verified by containment
 against the chunks the model saw and resolved to its document and page;
-what cannot be found is dropped — so `references` carries exactly the
+what cannot be found is dropped, so `references` carries exactly the
 passages that grounded the answer, never whole pages or everything that
 was retrieved. The prompt is a deliberate,
-reviewed artifact in `src/domain/services/prompts.py`, not a string buried
-in a route.
+reviewed artifact in `src/domain/services/prompts.py`.
 
 ```
 src/domain/       entities, ports (Protocols), AgentService, IngestionPipelineService, prompts — pure Python
@@ -239,15 +204,15 @@ The table is alive: every kept experiment adds a row, with its committed
 results file as evidence. The goal is to leave the best numbers we can
 reach here.
 
-| Iteration | Date | Results | recall@5 | hit_rate@5 | MRR@5 |
-| --------- | ---- | ------- | -------: | ---------: | ----: |
-| **Baseline** — pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json) | 0.65 | 0.66 | 0.60 |
-| **Font repair** — fonts lacking a ToUnicode map get one from Arial's glyph order before extraction; CESTARI stops indexing `�` (no OCR) | 2026-09-02 | [`20260902-035239-font-repair.json`](evals/results/20260902-035239-font-repair.json) | 0.78 | 0.80 | 0.70 |
-| **Page cleaning** — running headers, page numbers, dot leaders and picture-text markers stripped | 2026-09-02 | [`20260902-035640-page-cleanup.json`](evals/results/20260902-035640-page-cleanup.json) | 0.80 | 0.81 | 0.71 |
-| **Structured chunks** — markdown blocks packed to ~1200 chars, sentences and tables never split, sections from headings where the PDF has no outline | 2026-09-02 | [`20260902-041707-structured-chunks.json`](evals/results/20260902-041707-structured-chunks.json) | 0.79 | 0.81 | 0.71 |
-| **Contextualized embeddings** — document, section and heading prefixed to the text the embedder sees; stored chunk unchanged | 2026-09-02 | [`20260902-041913-embed-context.json`](evals/results/20260902-041913-embed-context.json) | 0.81 | 0.83 | 0.76 |
-| **Page chunks, small units** — one chunk per page; its paragraphs and table rows are embedded as separate vectors on the same Qdrant point (MaxSim), so a specific value is found and the whole page is read | 2026-09-02 | [`20260902-045635-page-multivector.json`](evals/results/20260902-045635-page-multivector.json) | 0.86 | 0.86 | 0.79 |
-| **Multilingual embedder** — `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json) | **0.95** | **0.95** | **0.91** |
+| Iteration                                                                                                                                                                                                    | Date       | Results                                                                                          | recall@5 | hit_rate@5 |    MRR@5 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------ | -------: | ---------: | -------: |
+| **Baseline** — pymupdf4llm extraction, fixed 1000/200 chunks, `text-embedding-3-small`, top-5 vector search                                                                                                  | 2026-09-01 | [`20260901-190240-baseline.json`](evals/results/20260901-190240-baseline.json)                   |     0.65 |       0.66 |     0.60 |
+| **Font repair** — fonts lacking a ToUnicode map get one from Arial's glyph order before extraction; CESTARI stops indexing `�` (no OCR)                                                                      | 2026-09-02 | [`20260902-035239-font-repair.json`](evals/results/20260902-035239-font-repair.json)             |     0.78 |       0.80 |     0.70 |
+| **Page cleaning** — running headers, page numbers, dot leaders and picture-text markers stripped                                                                                                             | 2026-09-02 | [`20260902-035640-page-cleanup.json`](evals/results/20260902-035640-page-cleanup.json)           |     0.80 |       0.81 |     0.71 |
+| **Structured chunks** — markdown blocks packed to ~1200 chars, sentences and tables never split, sections from headings where the PDF has no outline                                                         | 2026-09-02 | [`20260902-041707-structured-chunks.json`](evals/results/20260902-041707-structured-chunks.json) |     0.79 |       0.81 |     0.71 |
+| **Contextualized embeddings** — document, section and heading prefixed to the text the embedder sees; stored chunk unchanged                                                                                 | 2026-09-02 | [`20260902-041913-embed-context.json`](evals/results/20260902-041913-embed-context.json)         |     0.81 |       0.83 |     0.76 |
+| **Page chunks, small units** — one chunk per page; its paragraphs and table rows are embedded as separate vectors on the same Qdrant point (MaxSim), so a specific value is found and the whole page is read | 2026-09-02 | [`20260902-045635-page-multivector.json`](evals/results/20260902-045635-page-multivector.json)   |     0.86 |       0.86 |     0.79 |
+| **Multilingual embedder** — `EMBEDDING_MODEL=google:gemini-embedding-001` (3072 dims) instead of `text-embedding-3-small`; six of the eleven Portuguese-question-over-English-manual misses recovered        | 2026-09-02 | [`20260902-052352-gemini-embedding.json`](evals/results/20260902-052352-gemini-embedding.json)   | **0.95** |   **0.95** | **0.91** |
 
 Gates are computed over the 83 gated cases (93 minus 8 unanswerable
 controls and 2 image-only diagnostics).
@@ -260,47 +225,17 @@ cases' `expected_facts`, citation precision and recall over the cited
 `(document, page)` pairs, refusal rate over the 8 unanswerable controls.
 No LLM judge — red cases are read by hand from the per-case JSON.
 
-| Run | Citations | `query_knowledge` tool | reasoning effort | fact recall | citation precision | citation recall | refusals | latency (mean) | cost (LLM) |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json) | chunk ids | on | provider default | **0.93** | 0.70 | **0.92** | 6/8 | 11.7 s | ≈ $0.22 |
-| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json) | chunk ids | off | provider default | 0.92 | 0.73 | 0.91 | 7/8 | 10.5 s | ≈ $0.18 |
-| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json) | verbatim quotes | on | provider default | 0.92 | 0.78 | 0.90 | 7/8 | 16.0 s | ≈ $0.29 |
-| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json) | verbatim quotes | on | `low` | 0.91 | 0.79 | 0.86 | 7/8 | **5.9 s** | $0.18 |
-| [`20260904-033639-prompt-language-reminder.json`](evals/results/20260904-033639-prompt-language-reminder.json) | verbatim quotes | on | `low` | 0.91 | **0.81** | 0.90 | 6/8 | 6.4 s | **$0.14** |
+| Run                                                                                                            | Citations       | `query_knowledge` tool | reasoning effort | fact recall | citation precision | citation recall | refusals | latency (mean) | cost (LLM) |
+| -------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------- | ---------------- | ----------: | -----------------: | --------------: | -------: | -------------: | ---------: |
+| [`20260902-202721-agent-tool-on.json`](evals/results/20260902-202721-agent-tool-on.json)                       | chunk ids       | on                     | provider default |    **0.93** |               0.70 |        **0.92** |      6/8 |         11.7 s |    ≈ $0.22 |
+| [`20260902-203011-agent-tool-off.json`](evals/results/20260902-203011-agent-tool-off.json)                     | chunk ids       | off                    | provider default |        0.92 |               0.73 |            0.91 |      7/8 |         10.5 s |    ≈ $0.18 |
+| [`20260902-221750-citations-as-quotes.json`](evals/results/20260902-221750-citations-as-quotes.json)           | verbatim quotes | on                     | provider default |        0.92 |               0.78 |            0.90 |      7/8 |         16.0 s |    ≈ $0.29 |
+| [`20260903-010828-thinking-low.json`](evals/results/20260903-010828-thinking-low.json)                         | verbatim quotes | on                     | `low`            |        0.91 |               0.79 |            0.86 |      7/8 |      **5.9 s** |      $0.18 |
+| [`20260904-033639-prompt-language-reminder.json`](evals/results/20260904-033639-prompt-language-reminder.json) | verbatim quotes | on                     | `low`            |        0.91 |           **0.81** |            0.90 |      6/8 |          6.4 s |  **$0.14** |
 
 Costs marked ≈ are computed after the fact from each run's recorded
 tokens with the same price table; the last row's is recorded by the run
 itself (embedding calls excluded, three orders of magnitude smaller).
-
-The tool is neutral on the gates on this dataset (run-to-run noise is
-≈ ±0.03): it costs about a second and 55 % more input tokens, searches
-before refusing on most unanswerable questions, and never fires on the
-three cross-lingual retrieval misses, which become confidently wrong
-answers. Making the model quote the
-passages it cites instead of naming chunks raised citation precision
-(fewer, better pages cited) at the cost of the quotes' output tokens;
-7 of 200 quotes were dropped as not found in any page. The last row is
-the latency fix: at the provider's default reasoning effort **85–94 % of
-the output tokens were reasoning**, and latency tracks output tokens at
-≈ 10 ms each; `low` cut the mean answer time by 63 % and the run's cost by
-39 % with fact recall and citation precision inside noise. What it cost:
-citation recall −0.04, because the model copies quotes less carefully
-(14 dropped instead of 7: passages abridged with `...`, mixed-language
-splices).
-
-The last row pays that debt back with **prompt work alone, no new code**.
-Reading the 14 dropped quotes gave the two failure modes their own rules —
-never abridge a passage, and never continue one into the translation
-printed beside it on a mirrored page — and a third rule pins the **answer's
-language to the question's**, restated after the chunks because the model
-was following the language of what it had just read. Dropped quotes fell
-14 → 8, citation recall 0.86 → 0.90 and precision 0.79 → 0.81, fact recall
-held at 0.91, and answers that cite nothing at all went **3 cases → 1**.
-What it cost: one unanswerable control (`neg-008`, a grease the manual
-mentions for seals but not for bearings) was answered instead of refused —
-and the refusal it replaced had itself been written in the wrong language.
-`make eval-answers label=<name> workers=8` reproduces a row in about three
-minutes for ≈ $0.15 of `gpt-5-mini`.
 
 ## Engineering practices
 
@@ -324,20 +259,20 @@ minutes for ≈ $0.15 of `gpt-5-mini`.
 
 Copy `.env.example` to `.env`. Only the two API keys are required.
 
-| Variable                  | Default                  | What it does                                                                      |
-| ------------------------- | ------------------------ | --------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`          | —                        | The primary LLM (`gpt-5-mini`) and the OpenAI embedding models. **Required.**     |
-| `GEMINI_API_KEY`          | —                        | Embeddings (`gemini-embedding-001`) and the fallback LLM. **Required.**           |
-| `LLM_MODEL`               | `openai:gpt-5-mini`      | Any PydanticAI model string; `openai:` is the Responses API, `openai-chat:` Chat Completions. |
-| `LLM_FALLBACK_MODEL`      | `google:gemini-3.5-flash` | Tried when the primary model fails with a provider error (4xx, 5xx, connection). Blank disables the fallback. |
-| `LLM_THINKING`            | `low`                    | Reasoning effort of the LLM (`minimal`, `low`, `medium`, `high`, `xhigh`, `off`; blank keeps the provider default). Applies to the primary and the fallback model. At the provider default reasoning tokens were 85–94 % of the output and most of the latency; `low` cut the mean answer time by more than half on the eval. |
-| `EMBEDDING_MODEL`         | `google:gemini-embedding-001` | `google:gemini-embedding-001` (the measured best, see the scoreboard), `openai:text-embedding-3-small` or `openai:text-embedding-3-large`; changing the model requires re-indexing (delete the collection, the store refuses a mismatched one). |
-| `RETRIEVAL_K`             | `5`                      | Chunks per retrieval (seed and tool calls).                                       |
-| `AGENT_MAX_TOOL_ROUNDS`   | `3`                      | Cap on `query_knowledge` rounds per question; `0` disables the tool.              |
-| `QUERY_KNOWLEDGE_ENABLED` | `true`                   | Offer the retrieval tool to the model at all.                                     |
-| `QDRANT_URL`              | `http://localhost:6333`  | Host-side default; inside compose the API talks to the `qdrant` service.          |
-| `QDRANT_COLLECTION`       | `chunks`                 | Production collection.                                                            |
-| `EVAL_QDRANT_COLLECTION`  | `eval_chunks`            | Separate collection the eval harness indexes and reads.                           |
+| Variable                  | Default                       | What it does                                                                                                                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`          | —                             | The primary LLM (`gpt-5-mini`) and the OpenAI embedding models. **Required.**                                                                                                                                                                                                                                                 |
+| `GEMINI_API_KEY`          | —                             | Embeddings (`gemini-embedding-001`) and the fallback LLM. **Required.**                                                                                                                                                                                                                                                       |
+| `LLM_MODEL`               | `openai:gpt-5-mini`           | Any PydanticAI model string; `openai:` is the Responses API, `openai-chat:` Chat Completions.                                                                                                                                                                                                                                 |
+| `LLM_FALLBACK_MODEL`      | `google:gemini-3.5-flash`     | Tried when the primary model fails with a provider error (4xx, 5xx, connection). Blank disables the fallback.                                                                                                                                                                                                                 |
+| `LLM_THINKING`            | `low`                         | Reasoning effort of the LLM (`minimal`, `low`, `medium`, `high`, `xhigh`, `off`; blank keeps the provider default). Applies to the primary and the fallback model. At the provider default reasoning tokens were 85–94 % of the output and most of the latency; `low` cut the mean answer time by more than half on the eval. |
+| `EMBEDDING_MODEL`         | `google:gemini-embedding-001` | `google:gemini-embedding-001` (the measured best, see the scoreboard), `openai:text-embedding-3-small` or `openai:text-embedding-3-large`; changing the model requires re-indexing (delete the collection, the store refuses a mismatched one).                                                                               |
+| `RETRIEVAL_K`             | `5`                           | Chunks per retrieval (seed and tool calls).                                                                                                                                                                                                                                                                                   |
+| `AGENT_MAX_TOOL_ROUNDS`   | `3`                           | Cap on `query_knowledge` rounds per question; `0` disables the tool.                                                                                                                                                                                                                                                          |
+| `QUERY_KNOWLEDGE_ENABLED` | `true`                        | Offer the retrieval tool to the model at all.                                                                                                                                                                                                                                                                                 |
+| `QDRANT_URL`              | `http://localhost:6333`       | Host-side default; inside compose the API talks to the `qdrant` service.                                                                                                                                                                                                                                                      |
+| `QDRANT_COLLECTION`       | `chunks`                      | Production collection.                                                                                                                                                                                                                                                                                                        |
+| `EVAL_QDRANT_COLLECTION`  | `eval_chunks`                 | Separate collection the eval harness indexes and reads.                                                                                                                                                                                                                                                                       |
 
 The LLM has a provider fallback: when the primary model fails with a
 provider error, the same request is retried on `LLM_FALLBACK_MODEL`
@@ -362,14 +297,10 @@ concept before it is written, and stamps what he has reviewed
 
 Some of the documentation worth a look:
 
-- [`docs/golden-rules.md`](docs/golden-rules.md) — the six priorities
-  every tradeoff in this repo is resolved against.
 - [`docs/architecture.md`](docs/architecture.md) — the operating map of
   the codebase: shape, rules, how to extend it.
 - [`docs/decisions/`](docs/decisions/index.md) — the decision records,
   each with context, alternatives rejected and consequences.
-- [`docs/research/`](docs/research/index.md) — the cited external evidence
-  and corpus findings the decisions were grounded in.
 - Module notes next to the code, such as
   [`src/ingestion/ingestion.md`](src/ingestion/ingestion.md) and
   [`src/evaluation/evaluation.md`](src/evaluation/evaluation.md).
